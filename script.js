@@ -139,7 +139,7 @@ visor.addEventListener('progress', (e) => {
    - whatsapp: solo números con código de país (ej. '59899123456')
    - email:    alternativa si no usás WhatsApp
 ------------------------------------------------------------ */
-const CONTACTO = { nombre: '', whatsapp: 'XXXXXXXXXXX', email: '' };
+const CONTACTO = { nombre: 'Bruno Rodriguez', whatsapp: 'XXXXXXXXXXX', email: '' };
 
 (function configurarContacto() {
   const mensaje = 'Hola! Vi la demo de Realidad Aumentada y quiero algo así para mis vehículos.';
