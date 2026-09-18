@@ -85,3 +85,7 @@ Modelo `models/golf-gti-2024.glb`: "Volkswagen Golf GTI (2024)" de geyges (https
 - Si el `.glb` trae animaciones, aparece un panel "Abrir / cerrar" con un botón por animación (etiquetas en español en `ETIQUETAS_ANIM`, `script.js`). model-viewer aplica una animación a la vez.
 - Para sumar un auto a `index.html`, agregá un botón `.veh` con `data-src`, `data-materiales` (material de pintura), `data-titulo`, `data-motor`, `data-anio`, `data-trans` y `data-escala` (`fixed` = tamaño real si el modelo está en metros, `auto` = el usuario puede escalar).
 - Al optimizar modelos con `gltf-transform optimize`, usar `--palette false` si se quiere cambiar el color de un material de color sólido.
+
+Modelo `models/gorila-lowpoly.glb`: "Low poly Gorilla animal 3d model free" (https://sketchfab.com/3d-models/low-poly-gorilla-animal-3d-model-free-20bbf9e673814a76ba207b8494f17939) de iRahulRajput (https://sketchfab.com/rt699448), licencia [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Convertido, comprimido (Draco, 305 KB); mide ~1 m de alto, sin animaciones.
+
+`pruebas.html` usa el mismo selector `.veh` que `index.html` (botones con `data-src`, `data-titulo`, `data-scale`, etc.). Un elemento con `data-solo="zapatilla"` solo se muestra cuando el botón activo tiene `data-tipo="zapatilla"`.

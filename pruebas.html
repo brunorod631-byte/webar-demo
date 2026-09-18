@@ -7,7 +7,7 @@
   <title>Pruebas · Demo WebAR</title>
   <meta name="description" content="Demo de Realidad Aumentada en el navegador: pruebas de Realidad Aumentada." />
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="style.css?v=202609181505" />
+  <link rel="stylesheet" href="style.css?v=202609181510" />
 
   <!--
     ==========================================================
@@ -77,29 +77,37 @@
     </section>
 
     <section class="info">
-      <p class="eyebrow">Prueba · calzado</p>
-      <h1>Zapatilla escolar</h1>
+      <p class="eyebrow">Laboratorio</p>
+      <div class="veh-tabs" role="group" aria-label="Elegir modelo">
+        <button type="button" class="veh is-on" data-src="models/zapatilla-escolar.glb" data-tipo="zapatilla"
+                data-titulo="Zapatilla escolar" data-uso="Escolar" data-vista="3D + piso" data-tam="30 cm"
+                data-scale="0.75 0.75 0.75" data-escala="auto">Zapatilla</button>
+        <button type="button" class="veh" data-src="models/gorila-lowpoly.glb" data-tipo="gorila"
+                data-titulo="Gorila low poly" data-uso="Personaje" data-vista="3D + piso" data-tam="1 m de alto"
+                data-scale="1 1 1" data-escala="auto">Gorila</button>
+      </div>
+      <h1 id="veh-titulo">Zapatilla escolar</h1>
       <p class="price">$ 000 <small>· precio de ejemplo</small></p>
 
       <ul class="specs" aria-label="Detalles">
-        <li><span>Uso</span><strong>Escolar</strong></li>
-        <li><span>Vista</span><strong>3D + piso</strong></li>
+        <li><span>Tipo</span><strong id="sp-uso">Escolar</strong></li>
+        <li><span>Vista</span><strong id="sp-vista">3D + piso</strong></li>
+        <li><span>Tamaño en RA</span><strong id="sp-tam">30 cm</strong></li>
       </ul>
 
-      <a class="cta cta-solid" href="pie.html">👟 Probar en tu pie (experimental)</a>
+      <a class="cta cta-solid" data-solo="zapatilla" href="pie.html">👟 Probar en tu pie (experimental)</a>
       <p class="hint">
-        📱 <strong>“Ver en el piso”</strong> apoya la zapatilla a tamaño real frente a vos.
-        <strong>“Probar en tu pie”</strong> usa la cámara para intentar calzarla (prototipo).
+        📱 <strong>“Ver en el piso”</strong> apoya el modelo a escala frente a vos. En la zapatilla, <strong>“Probar en tu pie”</strong> usa la cámara para intentar calzarla (prototipo).
       </p>
     </section>
   </main>
 
   <footer id="contacto" class="site-footer">
     <p>Sección de pruebas · lo que se ve acá es experimental.</p>
-    <p class="credit">Modelo 3D: “school_shoe” (autoría y licencia: pendiente de confirmar).</p>
+    <p class="credit">Modelos 3D: “school_shoe” (autoría y licencia: pendiente de confirmar) · <a href="https://sketchfab.com/3d-models/low-poly-gorilla-animal-3d-model-free-20bbf9e673814a76ba207b8494f17939">“Low poly Gorilla animal 3d model free”</a> por <a href="https://sketchfab.com/rt699448">iRahulRajput</a>, <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</p>
     <p id="firma"></p>
   </footer>
 
-  <script src="script.js?v=202609181505"></script>
+  <script src="script.js?v=202609181510"></script>
 </body>
 </html>

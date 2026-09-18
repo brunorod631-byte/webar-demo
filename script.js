@@ -239,35 +239,43 @@ function construirAnimaciones() {
 visor.addEventListener('load', construirAnimaciones);
 
 /* ------------------------------------------------------------
-   SELECTOR DE VEHÍCULO (solo index.html)
+   SELECTOR DE MODELO (index.html y pruebas.html)
    Cambia el modelo y los datos de la ficha según los data-* del botón.
+   Los elementos de la ficha se buscan por id; los que la página no
+   tiene simplemente se omiten.
 ------------------------------------------------------------ */
-(function selectorVehiculo() {
+(function selectorModelo() {
   const botones = document.querySelectorAll('.veh');
   if (!botones.length) return;
+  // [id del elemento en la ficha, atributo data-* del botón]
+  const CAMPOS = [['veh-titulo', 'titulo'], ['sp-motor', 'motor'], ['sp-anio', 'anio'],
+                  ['sp-trans', 'trans'], ['sp-uso', 'uso'], ['sp-vista', 'vista'], ['sp-tam', 'tam']];
   botones.forEach(b => b.addEventListener('click', () => {
     if (b.classList.contains('is-on')) return;
     botones.forEach(x => x.classList.toggle('is-on', x === b));
 
     detenerAnimacion();
     visor.animationName = undefined;
-    visor.dataset.materialesColor = b.dataset.materiales;   // qué material se pinta en este modelo
+    visor.dataset.materialesColor = b.dataset.materiales || '';  // qué material se pinta en este modelo
     visor.setAttribute('ar-scale', b.dataset.escala || 'auto');
+    if (b.dataset.scale) visor.setAttribute('scale', b.dataset.scale); else visor.removeAttribute('scale');
     visor.setAttribute('alt', `${b.dataset.titulo} en 3D. Arrastrá para rotarlo.`);
-    visor.src = b.dataset.src;                              // dispara la carga; el evento 'load' reconfigura todo
+    visor.src = b.dataset.src;                                   // dispara la carga; el evento 'load' reconfigura todo
 
-    document.getElementById('veh-titulo').textContent = b.dataset.titulo;
-    document.getElementById('sp-motor').textContent = b.dataset.motor;
-    document.getElementById('sp-anio').textContent = b.dataset.anio;
-    document.getElementById('sp-trans').textContent = b.dataset.trans;
+    CAMPOS.forEach(([id, attr]) => {
+      const el = document.getElementById(id);
+      if (el && b.dataset[attr] !== undefined) el.textContent = b.dataset[attr];
+    });
+    // Elementos que solo aplican a ciertos modelos (ej. "Probar en tu pie" → solo zapatilla).
+    document.querySelectorAll('[data-solo]').forEach(el => { el.hidden = el.dataset.solo !== b.dataset.tipo; });
 
-    // El color vuelve a "Original" al cambiar de auto.
+    // El color vuelve a "Original" al cambiar de modelo.
     swatches.forEach(x => {
       const orig = x.dataset.color === 'original';
       x.classList.toggle('is-active', orig);
       x.setAttribute('aria-checked', String(orig));
     });
-    nombreColor.textContent = 'Original';
-    panelAnim.hidden = true;
+    if (nombreColor) nombreColor.textContent = 'Original';
+    if (panelAnim) panelAnim.hidden = true;
   }));
 })();

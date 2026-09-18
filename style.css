@@ -196,3 +196,6 @@ h1 { margin: 4px 0 6px; font-size: 1.6rem; line-height: 1.2; }
 .anim-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .anim-btn { font: inherit; font-size: .82rem; font-weight: 600; padding: 8px 12px; border-radius: 10px; border: 1.5px solid #cfd4dc; background: #fff; cursor: pointer; }
 .anim-btn.is-on { border-color: var(--accent); color: var(--accent); background: #e8f0ff; }
+
+/* El atributo hidden debe ganar siempre sobre display de las clases */
+[hidden] { display: none !important; }
