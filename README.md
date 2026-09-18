@@ -4,7 +4,8 @@ Demo de Realidad Aumentada en el navegador con [`<model-viewer>`](https://modelv
 HTML/CSS/JS plano, sin build ni frameworks. Pensada para automotoras, pero genérica: cambiando el `.glb` y los textos sirve para cualquier rubro.
 
 ```
-index.html   ficha de producto + visor <model-viewer> (todo comentado)
+index.html   demo Autos: ficha de vehículo + visor <model-viewer> (todo comentado)
+menu.html    demo Restaurante: ficha de plato (pizza), misma base sin selector de color
 style.css    estilos (variables de marca en :root)
 script.js    cambio de color, aviso de RA, barra de carga
 qr.html      generador de QR imprimible
@@ -64,3 +65,9 @@ Abrí `qr.html` (ya publicada, así toma la URL sola), revisá la URL y usá **I
 ## Créditos
 
 Modelo `models/porsche-911.glb`: basado en "(FREE) Porsche 911 Carrera 4S" (https://sketchfab.com/3d-models/free-porsche-911-carrera-4s-d01b254483794de3819786d93e0e1ebf) de Karol Miklas (https://sketchfab.com/karolmiklas), licencia [CC BY-SA 4.0](http://creativecommons.org/licenses/by-sa/4.0/). Se convirtió a .glb y se comprimió (Draco, texturas a 1024 px). La licencia exige atribución y que las versiones modificadas conserven la misma licencia; es solo un modelo de demostración. Para clientes reales usá el modelo propio del cliente.
+
+Modelo `models/pizza-bigboss.glb`: basado en "Pizza "BigBoss" Pancho" (https://sketchfab.com/3d-models/pizza-bigboss-pancho-29832125251a44939fae1a21a3288f88) de ponomarovmax (https://sketchfab.com/ponomarovmax), licencia [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Convertido a .glb, comprimido (Draco, texturas 1024 px) y escalado a ~35 cm con `scale`.
+
+## Agregar otra demo (otro rubro)
+
+Copiá `menu.html` como base, cambiá `src`, los textos y (si aplica) `data-materiales-color`, y sumá el link en el `<nav class="demos">` de las páginas. Si el modelo trae un tamaño irreal, corregilo con el atributo `scale` (ver comentario en `menu.html`).

@@ -39,6 +39,11 @@ body {
 .brand strong { color: var(--accent); }
 .tag { font-size: .75rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #e8f0ff; color: var(--accent); }
 
+/* Selector entre demos (Autos / Restaurante) */
+.demos { display: flex; gap: 4px; background: var(--bg); padding: 3px; border-radius: 999px; }
+.demos a { font-size: .8rem; font-weight: 600; padding: 6px 12px; border-radius: 999px; color: var(--muted); text-decoration: none; }
+.demos a.is-on { background: var(--accent); color: #fff; }
+
 /* ---------- Layout principal ---------- */
 .product {
   display: grid;

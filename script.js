@@ -12,23 +12,24 @@ const nombreColor = document.getElementById('color-nombre');
 const swatches = document.querySelectorAll('.swatch');
 
 /* ------------------------------------------------------------
-   CONFIGURACIÓN DE COLOR  ★ ajustá esto al cambiar de modelo ★
+   CONFIGURACIÓN POR MODELO  ★ se define en el HTML de cada demo ★
    ------------------------------------------------------------
    Un .glb se compone de "materiales" (carrocería, vidrio, goma...).
-   Para pintar solo la carrocería hay que saber el NOMBRE de su
+   Para cambiar el color de una parte hay que saber el NOMBRE de su
    material. Para verlos: abrí la consola del navegador y corré
        document.getElementById('visor').model.materials.map(m => m.name)
    o abrí el .glb en https://gltf.report o Blender.
 
-   En el Porsche 911 la carrocería se llama "paint".
-   En tu auto real probablemente sea algo como "Body", "Carroceria",
-   "CarPaint"... y lo cambiás acá. Podés poner varios nombres.
+   Luego se declaran como atributos del <model-viewer>:
+     data-materiales-color="paint"    → materiales que cambian de color
+                                        (varios: "paint,trim")
+     data-materiales-ocultos="Fabric" → materiales que se vuelven
+                                        transparentes (opcional)
+   Si la página no tiene botones de color (ej. menú de pizza), no pasa nada.
 ------------------------------------------------------------ */
-const MATERIALES_CARROCERIA = ['paint'];
-
-/* Materiales a ocultar (se vuelven transparentes). Útil si un modelo trae
-   piezas que no querés mostrar (ej. una tela o un piso). Vacío = no oculta nada. */
-const MATERIALES_OCULTOS = [];
+const lista = (attr) => (visor.dataset[attr] || '').split(',').map(x => x.trim()).filter(Boolean);
+const MATERIALES_CARROCERIA = lista('materialesColor');
+const MATERIALES_OCULTOS = lista('materialesOcultos');
 
 /* Espera a que el modelo termine de cargar; recién ahí existe
    visor.model y se pueden leer/modificar sus materiales. */
@@ -48,7 +49,7 @@ visor.addEventListener('load', () => {
     visor.materialesCarroceria.map(m => [m, [...m.pbrMetallicRoughness.baseColorFactor]])
   );
 
-  if (visor.materialesCarroceria.length === 0) {
+  if (MATERIALES_CARROCERIA.length && visor.materialesCarroceria.length === 0) {
     // Ayuda para el desarrollador: el nombre configurado no existe.
     console.warn(
       'No se encontró ningún material de carrocería. Materiales del modelo:',
