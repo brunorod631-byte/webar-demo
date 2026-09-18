@@ -6,6 +6,7 @@ HTML/CSS/JS plano, sin build ni frameworks. Pensada para automotoras, pero gené
 ```
 index.html   demo Autos: ficha de vehículo + visor <model-viewer> (todo comentado)
 pruebas.html laboratorio: zapatilla en RA de superficie
+xr.html      personaje animado interactivo en RA y VR con three.js + WebXR (experimental)
 pie.html     prototipo experimental: zapatilla sobre el pie con la cámara (MediaPipe + three.js)
 menu.html    demo Restaurante: ficha de plato (pizza), misma base sin selector de color
 style.css    estilos (variables de marca en :root)
@@ -89,3 +90,7 @@ Modelo `models/golf-gti-2024.glb`: "Volkswagen Golf GTI (2024)" de geyges (https
 Modelo `models/gorila-lowpoly.glb`: "Low poly Gorilla animal 3d model free" (https://sketchfab.com/3d-models/low-poly-gorilla-animal-3d-model-free-20bbf9e673814a76ba207b8494f17939) de iRahulRajput (https://sketchfab.com/rt699448), licencia [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Convertido, comprimido (Draco, 305 KB); mide ~1 m de alto, sin animaciones.
 
 `pruebas.html` usa el mismo selector `.veh` que `index.html` (botones con `data-src`, `data-titulo`, `data-scale`, etc.). Un elemento con `data-solo="zapatilla"` solo se muestra cuando el botón activo tiene `data-tipo="zapatilla"`.
+
+## Prueba: personaje interactivo en RA y VR (`xr.html`)
+
+three.js + WebXR, sin build. Un mismo personaje (`models/robot-expresivo.glb`, "RobotExpressive", CC0, incluido en los ejemplos de three.js; 14 animaciones) con dos botones: **Entrar en RA** (Android/Chrome con ARCore, o modo con cámara del Meta Quest 3) y **Entrar en VR** (visores). Una sesión WebXR es RA **o** VR, nunca las dos a la vez; por eso es la misma escena con dos modos. Interacción: tocar/apuntar al personaje → reacciona; tocar el piso → camina hasta ahí; siempre gira a mirar al usuario. En RA usa hit-test (aro verde) para apoyarlo en el piso y una capa DOM con botones sobre la cámara. Sin RA/VR (PC, iPhone/Safari) funciona como vista previa 3D con las mismas interacciones. iPhone no soporta WebXR: no hay RA en esta página.

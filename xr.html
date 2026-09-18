@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Personaje RA + VR · Demo WebAR</title>
+  <meta name="description" content="Prueba experimental: un personaje animado con el que se puede interactuar en RA y en VR." />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css?v=202609181548" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="brand" href="pruebas.html">
+      <img src="assets/logo.svg" alt="" width="36" height="36" />
+      <span>Laboratorio <strong>RA</strong></span>
+    </a>
+    <nav class="demos"><a href="index.html">Autos</a><a href="menu.html">Restaurante</a><a class="is-on" href="pruebas.html">Pruebas</a></nav>
+  </header>
+
+  <main class="cam-page xr-page">
+    <h1>Personaje interactivo <span class="badge">RA + VR</span></h1>
+    <p class="cam-help">
+      Un mismo personaje con animaciones, en dos modos: <strong>RA</strong> (aparece en tu
+      habitación a través de la cámara) y <strong>VR</strong> (entrás a un mundo virtual con un visor).
+      Tocalo para que reaccione, o tocá el piso para que camine hasta ahí.
+    </p>
+
+    <!-- El canvas de three.js se agrega acá. Sin visor ni RA, funciona como vista previa 3D. -->
+    <div id="stage" class="xr-stage"></div>
+    <p id="xr-estado" class="xr-estado">Comprobando compatibilidad…</p>
+
+    <div class="cam-actions">
+      <button id="btnAR" class="cta cta-solid" type="button" hidden>📱 Entrar en RA</button>
+      <button id="btnVR" class="cta cta-solid" type="button" hidden>🥽 Entrar en VR</button>
+    </div>
+
+    <fieldset class="anims">
+      <legend>Acciones</legend>
+      <div class="anim-list" id="acciones"></div>
+    </fieldset>
+  </main>
+
+  <!-- Capa que se muestra ENCIMA de la cámara durante la RA (WebXR "DOM Overlay").
+       Está oculta hasta que empieza la sesión de RA. -->
+  <div id="ar-ui" class="xr-overlay">
+    <p id="ar-hint" class="ar-hint"></p>
+    <div class="anim-list" id="acciones-ar"></div>
+    <button id="btnSalir" class="anim-btn" type="button">✕ Salir</button>
+  </div>
+
+  <footer class="site-footer">
+    <p>Modelo 3D: “RobotExpressive” (Tomás Laulhé, modificado por Don McCurdy), incluido en los ejemplos de three.js; dominio público (CC0).</p>
+    <p id="firma"></p>
+  </footer>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    /* ==========================================================
+       CÓMO FUNCIONA (resumen)
+       ==========================================================
+       - three.js dibuja la escena; renderer.xr.enabled = true la hace
+         compatible con WebXR (la API del navegador para RA y VR).
+       - Una "sesión" de WebXR es 'immersive-ar' O 'immersive-vr'. No pueden
+         ser las dos a la vez: por eso hay dos botones y el MISMO personaje.
+       - RA: se pide 'hit-test' para que el celular detecte el piso y
+         se pueda apoyar el personaje ahí (el aro verde).
+       - Interacción: al tocar (RA) o apretar el gatillo (VR) se lanza un
+         rayo. Si pega en el personaje → reacciona; si pega en el piso →
+         camina hasta ese punto.
+       ========================================================== */
+
+    const $ = (s) => document.querySelector(s);
+    const stage = $('#stage'), estadoEl = $('#xr-estado'), overlay = $('#ar-ui'), hint = $('#ar-hint');
+
+    /* ---------- Escena base ---------- */
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.xr.enabled = true;
+    stage.appendChild(renderer.domElement);
+
+    const FONDO = new THREE.Color(0x1d2530);
+    const scene = new THREE.Scene();
+    scene.background = FONDO;
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 100);
+    camera.position.set(0, 1.2, 2.5);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0.7, 0);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 2.4));
+    const sol = new THREE.DirectionalLight(0xffffff, 2.2);
+    sol.position.set(2, 4, 3);
+    scene.add(sol);
+
+    const grilla = new THREE.GridHelper(12, 24, 0x3a4a5e, 0x2a3546); // referencia de piso (vista previa y VR)
+    scene.add(grilla);
+    const planoPiso = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // piso virtual: y = 0
+
+    // Aro que muestra dónde detectó el piso el celular (solo en RA).
+    const reticula = new THREE.Mesh(
+      new THREE.RingGeometry(0.12, 0.16, 32).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0x33e17e }));
+    reticula.matrixAutoUpdate = false;
+    reticula.visible = false;
+    scene.add(reticula);
+
+    function ajustarTamano() {
+      if (renderer.xr.isPresenting) return;
+      const w = stage.clientWidth, h = stage.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(ajustarTamano).observe(stage);
+
+    /* ---------- Personaje ----------
+       `personaje` es un contenedor (posición, giro y escala); dentro va el
+       modelo, con los pies en y = 0. Así podemos moverlo y escalarlo fácil. */
+    const personaje = new THREE.Group();
+    scene.add(personaje);
+    let altoModelo = 1, mixer, acciones = {}, actual = null;
+
+    const gltf = await new GLTFLoader().loadAsync('models/robot-expresivo.glb');
+    const modelo = gltf.scene;
+    const caja = new THREE.Box3().setFromObject(modelo);
+    altoModelo = caja.getSize(new THREE.Vector3()).y;
+    modelo.position.y = -caja.min.y;
+    personaje.add(modelo);
+    setAltura(1.2);
+
+    // Sombra "de mancha" bajo los pies (una textura radial).
+    {
+      const c = document.createElement('canvas'); c.width = c.height = 64;
+      const g = c.getContext('2d'), grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(0,0,0,.55)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+      const sombra = new THREE.Mesh(new THREE.PlaneGeometry(altoModelo * 0.7, altoModelo * 0.7).rotateX(-Math.PI / 2),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+      sombra.position.y = 0.005;
+      personaje.add(sombra);
+    }
+
+    function setAltura(metros) { personaje.scale.setScalar(metros / altoModelo); }
+    const alturaActual = () => altoModelo * personaje.scale.y;
+
+    /* ---------- Animaciones ----------
+       El modelo trae 14 animaciones. Las "emociones" se reproducen una vez
+       y vuelve a "Idle" (reposo); "Walking" e "Idle" se repiten. */
+    mixer = new THREE.AnimationMixer(modelo);
+    for (const clip of gltf.animations) acciones[clip.name] = mixer.clipAction(clip);
+
+    function reproducir(nombre, { unaVez = false } = {}) {
+      const sig = acciones[nombre];
+      if (!sig || (sig === actual && !unaVez)) return;
+      sig.reset();
+      sig.setLoop(unaVez ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+      sig.clampWhenFinished = unaVez;
+      sig.enabled = true;
+      if (actual && actual !== sig) sig.crossFadeFrom(actual, 0.25, false);
+      sig.play();
+      actual = sig;
+    }
+
+    let estado = 'reposo';                 // 'reposo' | 'caminando' | 'emocion' | 'baile'
+    mixer.addEventListener('finished', () => { if (estado === 'emocion') { estado = 'reposo'; reproducir('Idle'); } });
+    reproducir('Idle');
+
+    const EMOCIONES = [
+      ['👋 Saludar', 'Wave'], ['🦘 Saltar', 'Jump'], ['👍 Pulgar arriba', 'ThumbsUp'],
+      ['🙂 Sí', 'Yes'], ['🙅 No', 'No'], ['👊 Puñetazo', 'Punch'],
+    ];
+    function emocion(nombre) { objetivo = null; estado = 'emocion'; reproducir(nombre, { unaVez: true }); }
+    function bailar() { objetivo = null; estado = 'baile'; reproducir('Dance'); }
+    const emocionAlAzar = () => emocion(EMOCIONES[Math.floor(Math.random() * EMOCIONES.length)][1]);
+
+    /* ---------- Movimiento: caminar hasta un punto, y mirar al usuario ---------- */
+    let objetivo = null;
+    const _cam = new THREE.Vector3(), _d = new THREE.Vector3();
+    function irA(punto) { objetivo = punto.clone(); objetivo.y = personaje.position.y; }
+    function irHaciaMi() {                  // camina hasta ~1 m delante del usuario
+      const cam = renderer.xr.isPresenting ? renderer.xr.getCamera() : camera;
+      cam.getWorldPosition(_cam);
+      _d.subVectors(_cam, personaje.position); _d.y = 0;
+      const dist = _d.length();
+      if (dist < 1.05) return;
+      irA(personaje.position.clone().addScaledVector(_d.normalize(), dist - 1));
+    }
+    function girarHacia(yaw, dt) {
+      let d = yaw - personaje.rotation.y;
+      d = Math.atan2(Math.sin(d), Math.cos(d));   // camino angular más corto
+      personaje.rotation.y += d * Math.min(1, dt * 6);
+    }
+    function actualizarMovimiento(dt) {
+      if (objetivo) {
+        _d.subVectors(objetivo, personaje.position); _d.y = 0;
+        const dist = _d.length();
+        if (dist > 0.05) {
+          _d.normalize();
+          personaje.position.addScaledVector(_d, Math.min(dist, 0.8 * alturaActual() * dt));
+          girarHacia(Math.atan2(_d.x, _d.z), dt);
+          if (estado !== 'caminando') { estado = 'caminando'; reproducir('Walking'); }
+        } else { objetivo = null; estado = 'reposo'; reproducir('Idle'); }
+      } else if (estado === 'reposo' || estado === 'baile' || estado === 'emocion') {
+        // Quieto: siempre mira al usuario.
+        const cam = renderer.xr.isPresenting ? renderer.xr.getCamera() : camera;
+        cam.getWorldPosition(_cam);
+        _d.subVectors(_cam, personaje.position);
+        girarHacia(Math.atan2(_d.x, _d.z), dt);
+      }
+    }
+
+    /* ---------- Interacción: un rayo → ¿pegó en el personaje o en el piso? ---------- */
+    const rayo = new THREE.Raycaster(), _p = new THREE.Vector3();
+    function interactuar(origen, direccion) {
+      rayo.set(origen, direccion.normalize());
+      if (rayo.intersectObject(modelo, true).length) { emocionAlAzar(); return; }
+      if (modoXR === 'ar') {
+        if (reticula.visible) irA(_p.setFromMatrixPosition(reticula.matrix));
+      } else if (rayo.ray.intersectPlane(planoPiso, _p)) {
+        irA(_p);
+      }
+    }
+
+    // Vista previa (mouse/dedo sin RA/VR): un clic corto (sin arrastrar) interactúa.
+    let downX = 0, downY = 0;
+    renderer.domElement.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; });
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      if (renderer.xr.isPresenting || Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return;
+      const r = renderer.domElement.getBoundingClientRect();
+      const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      rayo.setFromCamera(ndc, camera);
+      interactuar(rayo.ray.origin.clone(), rayo.ray.direction.clone());
+    });
+
+    /* ---------- Botones de acciones (en la página y en la capa de RA) ---------- */
+    function crearBotones(contenedor) {
+      const add = (texto, fn) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'anim-btn'; b.textContent = texto;
+        b.addEventListener('click', fn); contenedor.appendChild(b);
+      };
+      EMOCIONES.forEach(([t, n]) => add(t, () => emocion(n)));
+      add('💃 Bailar', bailar);
+      add('🏃 Ven aquí', irHaciaMi);
+    }
+    crearBotones($('#acciones')); crearBotones($('#acciones-ar'));
+    overlay.addEventListener('beforexrselect', (e) => e.preventDefault()); // tocar un botón no cuenta como tocar la escena
+
+    /* ==========================================================
+       SESIONES WebXR (RA y VR)
+       ========================================================== */
+    let sesion = null, modoXR = null, hitSource = null, colocado = false;
+
+    // Controladores (en RA, el "controlador" es el toque en la pantalla; en VR, cada mano/mando).
+    const _m = new THREE.Matrix4(), _o = new THREE.Vector3(), _dir = new THREE.Vector3();
+    for (let i = 0; i < 2; i++) {
+      const ctrl = renderer.xr.getController(i);
+      ctrl.addEventListener('select', () => {
+        if (modoXR === 'ar' && !colocado) {                    // primer toque: apoyar el personaje
+          if (!reticula.visible) return;
+          personaje.position.setFromMatrixPosition(reticula.matrix);
+          personaje.visible = true; colocado = true;
+          hint.textContent = 'Tocalo para que reaccione, o tocá el piso para que camine.';
+          return;
+        }
+        _m.identity().extractRotation(ctrl.matrixWorld);
+        _o.setFromMatrixPosition(ctrl.matrixWorld);
+        _dir.set(0, 0, -1).applyMatrix4(_m);
+        interactuar(_o, _dir);
+      });
+      // Línea visible en VR para apuntar.
+      ctrl.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -3)]),
+        new THREE.LineBasicMaterial({ color: 0x33e17e })));
+      scene.add(ctrl);
+    }
+
+    async function entrar(modo) {
+      try {
+        const esAR = modo === 'ar';
+        renderer.xr.setReferenceSpaceType(esAR ? 'local' : 'local-floor');
+        const init = esAR
+          ? { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: overlay } }
+          : { optionalFeatures: ['local-floor', 'bounded-floor'] };
+        sesion = await navigator.xr.requestSession(esAR ? 'immersive-ar' : 'immersive-vr', init);
+        sesion.addEventListener('end', alTerminar);
+        await renderer.xr.setSession(sesion);
+        modoXR = modo;
+
+        objetivo = null; estado = 'reposo'; reproducir('Idle');
+        if (esAR) {
+          scene.background = null;                             // transparente: se ve la cámara
+          grilla.visible = false;
+          personaje.visible = false; colocado = false;
+          setAltura(0.7);
+          overlay.style.display = 'flex';
+          hint.textContent = 'Apuntá al piso y tocá para apoyar el personaje.';
+          const viewer = await sesion.requestReferenceSpace('viewer');
+          hitSource = await sesion.requestHitTestSource({ space: viewer });
+        } else {
+          scene.background = FONDO;
+          grilla.visible = true;
+          personaje.visible = true;
+          setAltura(1.3);
+          personaje.position.set(0, 0, -2);
+          personaje.rotation.y = 0;
+        }
+      } catch (e) {
+        console.error(e);
+        estadoEl.textContent = 'No se pudo iniciar la sesión: ' + (e.message || e.name);
+      }
+    }
+
+    function alTerminar() {
+      sesion = null; modoXR = null; hitSource = null; colocado = false;
+      reticula.visible = false;
+      overlay.style.display = 'none';
+      scene.background = FONDO; grilla.visible = true; personaje.visible = true;
+      setAltura(1.2); personaje.position.set(0, 0, 0); personaje.rotation.y = 0;
+      ajustarTamano();
+    }
+
+    $('#btnAR').addEventListener('click', () => entrar('ar'));
+    $('#btnVR').addEventListener('click', () => entrar('vr'));
+    $('#btnSalir').addEventListener('click', () => sesion && sesion.end());
+
+    // ¿Qué soporta este dispositivo?
+    const soporta = (m) => navigator.xr ? navigator.xr.isSessionSupported(m).catch(() => false) : Promise.resolve(false);
+    const [okAR, okVR] = await Promise.all([soporta('immersive-ar'), soporta('immersive-vr')]);
+    $('#btnAR').hidden = !okAR; $('#btnVR').hidden = !okVR;
+    estadoEl.textContent =
+      !navigator.xr ? 'Este navegador no soporta WebXR (ej. Safari en iPhone). Se muestra la vista previa 3D: probá las acciones y tocá el personaje.'
+      : (okAR || okVR) ? `Disponible en este dispositivo: ${[okAR && 'RA', okVR && 'VR'].filter(Boolean).join(' y ')}.`
+      : 'Este dispositivo no ofrece RA ni VR desde el navegador. Vista previa 3D: probá las acciones y tocá el personaje.';
+
+    /* ---------- Bucle de dibujo ---------- */
+    const reloj = new THREE.Clock();
+    const bucle = (_, frame) => {
+      const dt = Math.min(reloj.getDelta(), 0.1);
+      // Hit-test de RA: ¿dónde está el piso, apuntando al centro de la pantalla?
+      if (frame && hitSource) {
+        const hits = frame.getHitTestResults(hitSource);
+        if (hits.length) {
+          reticula.visible = true;
+          reticula.matrix.fromArray(hits[0].getPose(renderer.xr.getReferenceSpace()).transform.matrix);
+        } else reticula.visible = false;
+      }
+      mixer.update(dt);
+      if (personaje.visible) actualizarMovimiento(dt);
+      if (!renderer.xr.isPresenting) controls.update();
+      renderer.render(scene, camera);
+    };
+    renderer.setAnimationLoop(bucle);
+
+    ajustarTamano();
+    window.__xr = { bucle, personaje, interactuar, emocion, bailar, irA, irHaciaMi, camera, renderer, scene, get estado() { return estado; } }; // para depurar
+  </script>
+</body>
+</html>

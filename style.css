@@ -199,3 +199,17 @@ h1 { margin: 4px 0 6px; font-size: 1.6rem; line-height: 1.2; }
 
 /* El atributo hidden debe ganar siempre sobre display de las clases */
 [hidden] { display: none !important; }
+
+/* ---------- Personaje RA + VR (xr.html) ---------- */
+.xr-page { max-width: 760px; }
+.xr-stage { position: relative; width: 100%; aspect-ratio: 16 / 10; background: #1d2530; border-radius: var(--radius); overflow: hidden; margin: 12px 0; }
+.xr-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.xr-estado { color: var(--muted); font-size: .88rem; margin: 6px 0 12px; }
+.xr-page .anims { margin-top: 16px; }
+/* Capa sobre la cámara durante la RA (oculta fuera de la sesión de RA) */
+.xr-overlay { display: none; flex-direction: column; justify-content: flex-end; gap: 10px; position: fixed; inset: 0; padding: 16px; pointer-events: none; }
+.xr-overlay > * { pointer-events: auto; }
+.xr-overlay .ar-hint { align-self: center; margin: 0; padding: 8px 14px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font-size: .9rem; }
+.xr-overlay .anim-list { justify-content: center; }
+.xr-overlay .anim-btn { background: rgba(255,255,255,.92); }
+#btnSalir { align-self: flex-end; order: -1; }
