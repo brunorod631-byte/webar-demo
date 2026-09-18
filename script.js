@@ -20,16 +20,15 @@ const swatches = document.querySelectorAll('.swatch');
        document.getElementById('visor').model.materials.map(m => m.name)
    o abrí el .glb en https://gltf.report o Blender.
 
-   En el modelo de ejemplo (ToyCar) la carrocería se llama "ToyCar".
+   En el Porsche 911 la carrocería se llama "paint".
    En tu auto real probablemente sea algo como "Body", "Carroceria",
    "CarPaint"... y lo cambiás acá. Podés poner varios nombres.
 ------------------------------------------------------------ */
-const MATERIALES_CARROCERIA = ['ToyCar'];
+const MATERIALES_CARROCERIA = ['paint'];
 
-/* Materiales a ocultar. El modelo de ejemplo trae una tela roja ("Fabric")
-   que cubre el auto; la hacemos transparente. Con tu modelo real
-   dejá el array vacío: []. */
-const MATERIALES_OCULTOS = ['Fabric'];
+/* Materiales a ocultar (se vuelven transparentes). Útil si un modelo trae
+   piezas que no querés mostrar (ej. una tela o un piso). Vacío = no oculta nada. */
+const MATERIALES_OCULTOS = [];
 
 /* Espera a que el modelo termine de cargar; recién ahí existe
    visor.model y se pueden leer/modificar sus materiales. */
@@ -41,9 +40,12 @@ visor.addEventListener('load', () => {
       m.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 0]);
     });
 
-  // Guardamos el color original de cada material para poder "volver".
   visor.materialesCarroceria = visor.model.materials.filter(m =>
     MATERIALES_CARROCERIA.includes(m.name)
+  );
+  // Guardamos el color original de cada material para poder "volver".
+  visor.coloresOriginales = new Map(
+    visor.materialesCarroceria.map(m => [m, [...m.pbrMetallicRoughness.baseColorFactor]])
   );
 
   if (visor.materialesCarroceria.length === 0) {
@@ -70,15 +72,16 @@ function hexARgba(hex) {
 }
 
 /* Aplica un color a la carrocería.
-   - 'original' → restaura blanco (1,1,1): la textura original se ve sin tinte.
-   - '#hex'     → multiplica el color base por ese tinte.
-   Nota: si el material trae una textura de color (como el ToyCar), el tinte
-   se MULTIPLICA con ella: el resultado es un "teñido", no un color plano.
-   Un modelo de auto real, con pintura de color sólido, muestra el color exacto. */
+   - 'original' → restaura el color que traía el modelo (guardado al cargar).
+   - '#hex'     → reemplaza el color base de la pintura.
+   Nota: si el material trae una textura de color, el tinte se MULTIPLICA con
+   ella (queda un "teñido"). En pintura de color sólido se ve el color exacto. */
 function pintar(color) {
   const materiales = visor.materialesCarroceria || [];
-  const rgba = color === 'original' ? [1, 1, 1, 1] : hexARgba(color);
-  materiales.forEach(m => m.pbrMetallicRoughness.setBaseColorFactor(rgba));
+  materiales.forEach(m => {
+    const rgba = color === 'original' ? visor.coloresOriginales.get(m) : hexARgba(color);
+    m.pbrMetallicRoughness.setBaseColorFactor(rgba);
+  });
 }
 
 /* Un solo listener para todos los botones de color. */

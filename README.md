@@ -8,7 +8,7 @@ index.html   ficha de producto + visor <model-viewer> (todo comentado)
 style.css    estilos (variables de marca en :root)
 script.js    cambio de color, aviso de RA, barra de carga
 qr.html      generador de QR imprimible
-models/      archivos .glb  (auto-demo.glb = placeholder Khronos ToyCar)
+models/      archivos .glb  (porsche-911.glb = modelo de demostración)
 assets/      logo y poster placeholder
 ```
 
@@ -63,4 +63,4 @@ Abrí `qr.html` (ya publicada, así toma la URL sola), revisá la URL y usá **I
 
 ## Créditos
 
-`models/auto-demo.glb`: ToyCar, Khronos glTF Sample Assets (CC BY 4.0, Guido Odendahl / Eric Chadwick). Es solo un placeholder de demostración.
+Modelo `models/porsche-911.glb`: basado en "(FREE) Porsche 911 Carrera 4S" (https://sketchfab.com/3d-models/free-porsche-911-carrera-4s-d01b254483794de3819786d93e0e1ebf) de Karol Miklas (https://sketchfab.com/karolmiklas), licencia [CC BY-SA 4.0](http://creativecommons.org/licenses/by-sa/4.0/). Se convirtió a .glb y se comprimió (Draco, texturas a 1024 px). La licencia exige atribución y que las versiones modificadas conserven la misma licencia; es solo un modelo de demostración. Para clientes reales usá el modelo propio del cliente.

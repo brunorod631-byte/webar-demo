@@ -44,7 +44,7 @@
         ==========================================================
         id="visor"            → para manejarlo desde script.js.
 
-        src="models/auto-demo.glb"
+        src="models/porsche-911.glb"
           ★★★ AQUÍ REEMPLAZÁS EL MODELO POR EL DEL AUTO REAL ★★★
           Poné tu archivo .glb en /models y cambiá esta ruta
           (ej: models/hilux-2025.glb). Ver README.md.
@@ -70,9 +70,7 @@
                                 haciendo scroll de la página (si no, el visor
                                 "atrapa" el dedo y no se puede bajar).
         auto-rotate           → gira solo hasta que el usuario lo toca.
-        shadow-intensity="0"  → sombra bajo el modelo (0 = apagada). Con el ToyCar de ejemplo
-                                está en 0 porque la tela oculta proyectaría sombra; con tu
-                                auto real ponelo en 1.
+        shadow-intensity="1"  → sombra suave bajo el modelo (0 = apagada).
         shadow-softness="1"   → qué tan difusa es esa sombra.
         environment-image="neutral"
                               → iluminación de estudio incluida (reflejos
@@ -87,7 +85,7 @@
       -->
       <model-viewer
         id="visor"
-        src="models/auto-demo.glb"
+        src="models/porsche-911.glb"
         alt="Vehículo en 3D. Arrastrá para rotarlo."
         ar
         ar-modes="webxr scene-viewer quick-look"
@@ -96,12 +94,12 @@
         camera-controls
         touch-action="pan-y"
         auto-rotate
-        shadow-intensity="0"
+        shadow-intensity="1"
         shadow-softness="1"
         environment-image="neutral"
         exposure="1"
-        camera-orbit="35deg 75deg 45%"
-        min-camera-orbit="auto 20deg 20%"
+        camera-orbit="35deg 75deg auto"
+        min-camera-orbit="auto 20deg auto"
         max-camera-orbit="auto 100deg auto"
         interaction-prompt="auto"
         poster="assets/poster.svg"
@@ -132,13 +130,13 @@
     <!-- ====== Datos de la ficha ====== -->
     <section class="info">
       <p class="eyebrow">Modelo destacado</p>
-      <h1>Compact Sport 1.6 Turbo</h1>
+      <h1>Porsche 911 Carrera 4S</h1>
       <p class="price">USD 24.900 <small>· precio de ejemplo</small></p>
 
       <ul class="specs" aria-label="Especificaciones">
-        <li><span>Motor</span><strong>1.6 Turbo · 150 CV</strong></li>
+        <li><span>Motor</span><strong>3.0 Bi-Turbo · 450 CV</strong></li>
         <li><span>Año</span><strong>2026</strong></li>
-        <li><span>Transmisión</span><strong>Automática 6 vel.</strong></li>
+        <li><span>Transmisión</span><strong>PDK 8 vel.</strong></li>
         <li><span>Combustible</span><strong>Nafta</strong></li>
       </ul>
 
@@ -170,6 +168,7 @@
 
   <footer id="contacto" class="site-footer">
     <p>Demo de Realidad Aumentada en el navegador · sin instalar ninguna app.</p>
+    <p class="credit">Modelo 3D: <a href="https://sketchfab.com/3d-models/free-porsche-911-carrera-4s-d01b254483794de3819786d93e0e1ebf">“(FREE) Porsche 911 Carrera 4S”</a> por <a href="https://sketchfab.com/karolmiklas">Karol Miklas</a>, <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.</p>
     <p><a href="qr.html">Generar QR para el local →</a></p>
   </footer>
 
