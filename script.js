@@ -128,3 +128,35 @@ visor.addEventListener('progress', (e) => {
   relleno.style.width = `${p * 100}%`;
   barra.classList.toggle('done', p === 1);
 });
+
+/* ------------------------------------------------------------
+   DATOS DE CONTACTO  ★ completá esto con tus datos ★
+   ------------------------------------------------------------
+   Alimentan los botones "Quiero esto para mis vehículos" y la firma
+   del pie. Si dejás todo vacío, el botón principal lleva a la
+   sección "Así funciona".
+   - nombre:   tu marca o nombre (ej. 'Bruno · WebAR')
+   - whatsapp: solo números con código de país (ej. '59899123456')
+   - email:    alternativa si no usás WhatsApp
+------------------------------------------------------------ */
+const CONTACTO = { nombre: '', whatsapp: 'XXXXXXXXXXX', email: '' };
+
+(function configurarContacto() {
+  const mensaje = 'Hola! Vi la demo de Realidad Aumentada y quiero algo así para mis vehículos.';
+  let href = null;
+  if (CONTACTO.whatsapp) {
+    href = `https://wa.me/${CONTACTO.whatsapp}?text=${encodeURIComponent(mensaje)}`;
+  } else if (CONTACTO.email) {
+    href = `mailto:${CONTACTO.email}?subject=${encodeURIComponent('Demo Realidad Aumentada')}&body=${encodeURIComponent(mensaje)}`;
+  }
+  if (href) {
+    ['cta', 'cta2'].forEach(id => {
+      const a = document.getElementById(id);
+      a.href = href;
+      if (CONTACTO.whatsapp) { a.target = '_blank'; a.rel = 'noopener'; }
+    });
+  }
+  if (CONTACTO.nombre) {
+    document.getElementById('firma').textContent = `Demo creada por ${CONTACTO.nombre}`;
+  }
+})();

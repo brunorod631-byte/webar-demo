@@ -133,6 +133,18 @@ h1 { margin: 4px 0 6px; font-size: 1.6rem; line-height: 1.2; }
 .cta:hover { background: #e8f0ff; }
 .hint { font-size: .85rem; color: var(--muted); margin: 14px 0 0; }
 
+/* ---------- Sección "Así funciona" ---------- */
+.how { max-width: 1000px; margin: 8px auto 0; padding: 24px 16px; text-align: center; scroll-margin-top: 70px; }
+.how h2 { margin: 0 0 20px; font-size: 1.5rem; }
+.steps { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 14px; text-align: left; }
+.steps li { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+.steps h3, .need h3 { margin: 8px 0 4px; font-size: 1.05rem; }
+.steps p, .need p { margin: 0; color: var(--muted); font-size: .92rem; }
+.n { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; }
+.need { background: #e8f0ff; border-radius: var(--radius); padding: 18px; margin-bottom: 20px; text-align: left; }
+.cta-solid { display: inline-block; background: var(--accent); color: #fff; padding: 14px 28px; }
+.cta-solid:hover { background: var(--accent-dark); }
+
 .site-footer { text-align: center; padding: 24px 16px 36px; color: var(--muted); font-size: .85rem; }
 .site-footer p { margin: 4px 0; }
 .site-footer a { color: var(--accent); }
@@ -142,6 +154,7 @@ h1 { margin: 4px 0 6px; font-size: 1.6rem; line-height: 1.2; }
   .product { grid-template-columns: 1.6fr 1fr; align-items: start; padding: 28px 24px; gap: 24px; }
   model-viewer { height: 620px; max-height: none; }
   h1 { font-size: 2rem; }
+  .steps { grid-template-columns: repeat(3, 1fr); }
   .info { position: sticky; top: 90px; }
 }
 
