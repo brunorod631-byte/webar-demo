@@ -55,7 +55,7 @@ Detalle: si el celular no es compatible, el botón no se muestra y aparece un av
 
 ## Color del vehículo
 
-`script.js` tiñe el material de carrocería con la API de materiales (`setBaseColorFactor`). Con el ToyCar de ejemplo el color se **multiplica** con su textura (queda un tinte); con un auto de pintura sólida se ve el color exacto. Si el modelo trae **variantes** nativas (`KHR_materials_variants`), es más prolijo usar `visor.variantName = '...'`.
+`script.js` tiñe el material de carrocería con la API de materiales (`setBaseColorFactor`). Si el material trae textura de color, el color se **multiplica** con su textura (queda un tinte); con un auto de pintura sólida se ve el color exacto. Si el modelo trae **variantes** nativas (`KHR_materials_variants`), es más prolijo usar `visor.variantName = '...'`.
 
 ## QR para el local
 
