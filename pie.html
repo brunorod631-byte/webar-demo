@@ -60,8 +60,9 @@
       <label>Tamaño <input id="tam" type="range" min="0.6" max="1.8" step="0.05" value="1.1" /></label>
       <label>Vista
         <select id="vista">
-          <option value="arriba">Desde arriba</option>
-          <option value="lado">De costado</option>
+          <option value="3d">Ajustar al pie (3D)</option>
+          <option value="arriba">Fija desde arriba</option>
+          <option value="lado">Fija de costado</option>
         </select>
       </label>
       <label><input id="invertir" type="checkbox" /> Invertir izquierdo/derecho</label>
@@ -80,8 +81,9 @@
        2. MediaPipe "Pose Landmarker" mira cada cuadro y devuelve 33 puntos
           del cuerpo. Nos interesan 6: tobillo, talón y punta de cada pie
           (índices 27-32).
-       3. Con talón→punta calculamos hacia dónde apunta el pie y qué
-          tamaño tiene en pantalla.
+       3. Con talón→punta (y la profundidad que estima MediaPipe) calculamos
+          hacia dónde apunta el pie en 3D; con el tobillo, hacia dónde queda
+          "arriba". Así la zapatilla gira e inclina junto con el pie.
        4. three.js dibuja la zapatilla en ese lugar, girada y escalada.
        Todo corre en el navegador; no hay servidor.
        ========================================================== */
@@ -142,44 +144,66 @@
     };
 
     /* ---------- Colocar la zapatilla sobre un pie ----------
-       talon y punta: {x, y} en píxeles de pantalla. */
+       tobillo, talon, punta: {x, y, z} en píxeles. La z es la profundidad
+       que estima MediaPipe (menor = más cerca de la cámara); se pasa a
+       coordenadas de three.js (X derecha, Y arriba, Z hacia la cámara). */
     const _m = new THREE.Matrix4();
-    function colocar(pivote, talon, punta, espejar) {
-      const dx = punta.x - talon.x, dy = -(punta.y - talon.y); // dy con Y hacia arriba
-      const largo = Math.hypot(dx, dy);
-      if (largo < 8) { pivote.visible = false; return; }
+    const aV3 = (p) => new THREE.Vector3(p.x, -p.y, -p.z);
 
-      // Ejes de la zapatilla en el mundo:
-      //  - adelante (punta) = dirección talón→punta, en el plano de la pantalla
-      //  - arriba = hacia la cámara (vista "desde arriba") o hacia arriba de la pantalla (de costado)
-      const adelante = new THREE.Vector3(dx / largo, dy / largo, 0);
-      let arriba = new THREE.Vector3(0, 0, 1);
-      if (ui.vista() === 'lado') {
+    function colocar(pivote, tobillo, talon, punta, espejar) {
+      const h = aV3(talon), t = aV3(punta), a = aV3(tobillo);
+      const largo2D = Math.hypot(punta.x - talon.x, punta.y - talon.y);
+      const adelante = t.clone().sub(h);
+      const largo3D = adelante.length();
+      if (largo3D < 8) { pivote.visible = false; return; }
+      adelante.normalize();
+
+      let arriba;
+      if (ui.vista() === '3d') {
+        // "Arriba" de la zapatilla = del centro del pie hacia el tobillo, sin la parte
+        // que va en la dirección del pie. Así la zapatilla se inclina con el pie.
+        const centro = h.clone().add(t).multiplyScalar(0.5);
+        arriba = a.clone().sub(centro);
+        arriba.addScaledVector(adelante, -arriba.dot(adelante));
+        if (arriba.lengthSq() < 1e-2) arriba.set(0, 1, 0); // tobillo justo encima de la línea: usar la vertical
+        arriba.normalize();
+      } else if (ui.vista() === 'lado') {
         arriba = new THREE.Vector3(-adelante.y, adelante.x, 0);
         if (arriba.y < 0) arriba.negate();
+        adelante.z = 0; adelante.normalize();
+      } else { // 'arriba': hacia la cámara, con el pie aplastado en el plano de la pantalla
+        arriba = new THREE.Vector3(0, 0, 1);
+        adelante.z = 0; adelante.normalize();
       }
-      const z = adelante.clone().negate();               // el modelo tiene la punta hacia -Z
+
+      // Base de ejes del modelo: la punta mira hacia -Z, "arriba" es Y, el ancho es X.
+      const z = adelante.clone().negate();
       const x = new THREE.Vector3().crossVectors(arriba, z).normalize();
-      _m.makeBasis(x, arriba, z);
+      const y = new THREE.Vector3().crossVectors(z, x).normalize(); // reortogonaliza
+      _m.makeBasis(x, y, z);
       pivote.quaternion.setFromRotationMatrix(_m);
 
-      // La zapatilla es algo más larga que la distancia talón→punta detectada.
-      const s = (largo * 1.1 * ui.tam()) / largoModelo;
-      pivote.scale.set(espejar ? -s : s, s, s);          // escala X negativa = espejo (pie opuesto)
-      pivote.position.set((talon.x + punta.x) / 2, -(talon.y + punta.y) / 2, 0);
+      // Largo real del pie: el 3D, pero acotado (la profundidad de MediaPipe es ruidosa).
+      const largo = ui.vista() === '3d' ? Math.min(Math.max(largo3D, largo2D), largo2D * 2.5) : largo2D;
+      const s = (largo * 1.12 * ui.tam()) / largoModelo;
+      pivote.scale.set(espejar ? -s : s, s, s);              // escala X negativa = espejo (pie opuesto)
+
+      // Posición: centro del pie, un poco hacia abajo (los puntos están sobre la piel, la suela va debajo).
+      const pos = h.clone().add(t).multiplyScalar(0.5).addScaledVector(y, -largo * 0.1);
+      pivote.position.copy(pos);
       pivote.visible = true;
     }
 
     /* ---------- Suavizado ----------
        Los puntos detectados "tiemblan"; se mezcla cada nuevo valor con el
-       anterior (media móvil exponencial) para que la zapatilla no vibre. */
+       anterior (media móvil exponencial) para que la zapatilla no vibre.
+       La profundidad (z) es la más ruidosa, así que se suaviza más. */
     const suave = { izq: null, der: null };
-    function suavizar(k, talon, punta) {
-      const a = 0.45; // 0 = muy suave y lento, 1 = sin suavizado
+    function suavizar(k, tob, tal, pun) {
       const prev = suave[k];
-      if (!prev) return (suave[k] = { talon: { ...talon }, punta: { ...punta } });
-      for (const [p, n] of [[prev.talon, talon], [prev.punta, punta]]) {
-        p.x += (n.x - p.x) * a; p.y += (n.y - p.y) * a;
+      if (!prev) return (suave[k] = { tob: { ...tob }, tal: { ...tal }, pun: { ...pun } });
+      for (const [p, n] of [[prev.tob, tob], [prev.tal, tal], [prev.pun, pun]]) {
+        p.x += (n.x - p.x) * 0.45; p.y += (n.y - p.y) * 0.45; p.z += (n.z - p.z) * 0.25;
       }
       return prev;
     }
@@ -202,9 +226,9 @@
       for (const k of ['izq', 'der']) {
         const p = pies[k];
         if (!p || p[1].v < 0.4 || p[2].v < 0.4) { pivotes[k].visible = false; suave[k] = null; continue; }
-        const s = suavizar(k, p[1], p[2]);
+        const s = suavizar(k, p[0], p[1], p[2]);
         // Pie izquierdo del modelo normal; el otro se espeja (o al revés si se marca "invertir").
-        colocar(pivotes[k], s.talon, s.punta, (k === 'der') !== ui.invertir());
+        colocar(pivotes[k], s.tob, s.tal, s.pun, (k === 'der') !== ui.invertir());
         dibujar.push(p);
       }
       dibujarPuntos(dibujar);
@@ -217,14 +241,19 @@
        ========================================================== */
     let demoActivo = false;
     function demoCuadro(t) {
-      const ang = (Math.sin(t / 1500) * 0.5);            // el pie "gira" de un lado a otro
-      const L = H * 0.32;
-      const pie = (cx, a) => {
-        const talon = { x: cx, y: H * 0.78, v: 1 };
-        const punta = { x: cx + Math.sin(a) * L, y: H * 0.78 - Math.cos(a) * L, v: 1 };
-        return [{ x: cx, y: H * 0.7, v: 1 }, talon, punta];
+      const yaw = Math.sin(t / 1500) * 0.6;              // el pie gira a los costados
+      const cabeceo = (Math.sin(t / 2300) * 0.5 + 0.5) * 1.0; // 0 = plano, ~1 rad = punta hacia la cámara
+      const L = H * 0.3;
+      const pie = (cx, giro) => {
+        const talon = { x: cx, y: H * 0.78, z: 0, v: 1 };
+        const punta = {
+          x: cx + Math.sin(giro) * Math.cos(cabeceo) * L,
+          y: H * 0.78 - Math.cos(giro) * Math.cos(cabeceo) * L,
+          z: -Math.sin(cabeceo) * L, v: 1,               // z negativa = más cerca de la cámara
+        };
+        return [{ x: cx, y: H * 0.62, z: 0, v: 1 }, talon, punta];
       };
-      aplicar({ izq: pie(W * 0.35, ang), der: pie(W * 0.65, -ang) });
+      aplicar({ izq: pie(W * 0.35, yaw), der: pie(W * 0.65, -yaw) });
     }
 
     /* ==========================================================
@@ -291,7 +320,7 @@
       const lm = r.landmarks && r.landmarks[0];
       if (!lm) { estado.textContent = 'No te veo. Alejate un poco para que entre el cuerpo.'; aplicar({}); return; }
       estado.textContent = '';
-      const pt = (i) => ({ x: lm[i].x * W, y: lm[i].y * H, v: lm[i].visibility ?? 1 });
+      const pt = (i) => ({ x: lm[i].x * W, y: lm[i].y * H, z: lm[i].z * W, v: lm[i].visibility ?? 1 });
       aplicar({ izq: PIES.izq.map(pt), der: PIES.der.map(pt) });
     }
 
