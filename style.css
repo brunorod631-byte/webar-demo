@@ -185,3 +185,14 @@ h1 { margin: 4px 0 6px; font-size: 1.6rem; line-height: 1.2; }
 .cam-tune { margin-top: 14px; border: 1px solid #dde1e7; border-radius: 12px; padding: 10px 14px; display: grid; gap: 10px; }
 .cam-tune label { font-size: .9rem; display: flex; gap: 10px; align-items: center; }
 .cam-tune input[type=range] { flex: 1; }
+
+/* ---------- Selector de vehículo y animaciones ---------- */
+.veh-tabs { display: flex; gap: 6px; margin: 8px 0 4px; }
+.veh { font: inherit; font-size: .85rem; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1.5px solid #cfd4dc; background: #fff; color: var(--muted); cursor: pointer; }
+.veh.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.anims { border: 0; margin: 0 0 18px; padding: 0; }
+.anims[hidden] { display: none; }
+.anims legend { padding: 0; margin-bottom: 8px; font-size: .9rem; color: var(--muted); }
+.anim-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.anim-btn { font: inherit; font-size: .82rem; font-weight: 600; padding: 8px 12px; border-radius: 10px; border: 1.5px solid #cfd4dc; background: #fff; cursor: pointer; }
+.anim-btn.is-on { border-color: var(--accent); color: var(--accent); background: #e8f0ff; }

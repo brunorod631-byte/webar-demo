@@ -28,28 +28,29 @@ const swatches = document.querySelectorAll('.swatch');
    Si la página no tiene botones de color (ej. menú de pizza), no pasa nada.
 ------------------------------------------------------------ */
 const lista = (attr) => (visor.dataset[attr] || '').split(',').map(x => x.trim()).filter(Boolean);
-const MATERIALES_CARROCERIA = lista('materialesColor');
-const MATERIALES_OCULTOS = lista('materialesOcultos');
+// Funciones (no constantes): el selector de vehículo cambia estos atributos en vivo.
+const materialesColor = () => lista('materialesColor');
+const materialesOcultos = () => lista('materialesOcultos');
 
 /* Espera a que el modelo termine de cargar; recién ahí existe
    visor.model y se pueden leer/modificar sus materiales. */
 visor.addEventListener('load', () => {
   visor.model.materials
-    .filter(m => MATERIALES_OCULTOS.includes(m.name))
+    .filter(m => materialesOcultos().includes(m.name))
     .forEach(m => {
       m.setAlphaMode('BLEND');
       m.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 0]);
     });
 
   visor.materialesCarroceria = visor.model.materials.filter(m =>
-    MATERIALES_CARROCERIA.includes(m.name)
+    materialesColor().includes(m.name)
   );
   // Guardamos el color original de cada material para poder "volver".
   visor.coloresOriginales = new Map(
     visor.materialesCarroceria.map(m => [m, [...m.pbrMetallicRoughness.baseColorFactor]])
   );
 
-  if (MATERIALES_CARROCERIA.length && visor.materialesCarroceria.length === 0) {
+  if (materialesColor().length && visor.materialesCarroceria.length === 0) {
     // Ayuda para el desarrollador: el nombre configurado no existe.
     console.warn(
       'No se encontró ningún material de carrocería. Materiales del modelo:',
@@ -160,4 +161,113 @@ const CONTACTO = { nombre: 'Bruno Rodriguez', whatsapp: '', email: '' };
   if (CONTACTO.nombre) {
     document.getElementById('firma').textContent = `Demo creada por ${CONTACTO.nombre}`;
   }
+})();
+
+/* ------------------------------------------------------------
+   ANIMACIONES (puertas, baúl, techo solar...)
+   ------------------------------------------------------------
+   Si el .glb trae animaciones, model-viewer las lista en
+   visor.availableAnimations. Mostramos un botón por animación.
+   Cada botón abre y cierra (alternando) recorriendo la animación
+   hacia adelante o hacia atrás con visor.currentTime.
+   Ojo: model-viewer aplica UNA animación a la vez; al elegir otra,
+   la anterior vuelve a su posición inicial.
+------------------------------------------------------------ */
+const ETIQUETAS_ANIM = {
+  'Open all doors': 'Todas las puertas',
+  'Front left door': 'Puerta delantera izq.',
+  'Front right door': 'Puerta delantera der.',
+  'Rear left door': 'Puerta trasera izq.',
+  'Rear right door': 'Puerta trasera der.',
+  'Tailgate and shelf': 'Baúl',
+  'Sunroof': 'Techo solar',
+  'Airbags': 'Airbags',
+  'Wind deflector': 'Deflector de viento',
+  'Cupholder': 'Portavasos',
+};
+const OCULTAS_ANIM = /support arm/i;      // partes de otra animación; no merecen botón propio
+
+const panelAnim = document.getElementById('anims');
+const listaAnim = document.getElementById('anim-list');
+let animActual = null, animAbierta = false, animRaf = 0;
+
+function detenerAnimacion() {
+  cancelAnimationFrame(animRaf);
+  animActual = null; animAbierta = false;
+}
+
+async function alternarAnimacion(nombre, boton) {
+  cancelAnimationFrame(animRaf);
+  visor.removeAttribute('auto-rotate');            // que el auto no gire mientras se abre
+  if (nombre !== animActual) {                     // animación nueva: arranca cerrada
+    visor.animationName = nombre;
+    animActual = nombre; animAbierta = false;
+    listaAnim.querySelectorAll('button').forEach(b => b.classList.toggle('is-on', b === boton));
+    await visor.updateComplete;
+    visor.pause();
+    visor.currentTime = 0;
+  }
+  const dur = visor.duration || 1;
+  // OJO: currentTime = duración exacta "da la vuelta" a 0 (la animación se ve cerrada);
+  // por eso el extremo "abierto" se deja apenas antes del final.
+  const desde = visor.currentTime, hasta = animAbierta ? 0 : dur - 0.02;
+  const t0 = performance.now(), ms = Math.max(300, Math.abs(hasta - desde) * 1000);
+  const paso = (t) => {
+    const k = Math.min(1, (t - t0) / ms);
+    visor.currentTime = desde + (hasta - desde) * k;
+    if (k < 1) animRaf = requestAnimationFrame(paso);
+  };
+  animRaf = requestAnimationFrame(paso);
+  animAbierta = !animAbierta;
+  boton.setAttribute('aria-pressed', String(animAbierta));
+}
+
+function construirAnimaciones() {
+  if (!panelAnim) return;
+  detenerAnimacion();
+  listaAnim.innerHTML = '';
+  const nombres = (visor.availableAnimations || []).filter(n => !OCULTAS_ANIM.test(n));
+  panelAnim.hidden = nombres.length === 0;
+  nombres.forEach(n => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'anim-btn';
+    b.textContent = ETIQUETAS_ANIM[n] || n;
+    b.addEventListener('click', () => alternarAnimacion(n, b));
+    listaAnim.appendChild(b);
+  });
+}
+visor.addEventListener('load', construirAnimaciones);
+
+/* ------------------------------------------------------------
+   SELECTOR DE VEHÍCULO (solo index.html)
+   Cambia el modelo y los datos de la ficha según los data-* del botón.
+------------------------------------------------------------ */
+(function selectorVehiculo() {
+  const botones = document.querySelectorAll('.veh');
+  if (!botones.length) return;
+  botones.forEach(b => b.addEventListener('click', () => {
+    if (b.classList.contains('is-on')) return;
+    botones.forEach(x => x.classList.toggle('is-on', x === b));
+
+    detenerAnimacion();
+    visor.animationName = undefined;
+    visor.dataset.materialesColor = b.dataset.materiales;   // qué material se pinta en este modelo
+    visor.setAttribute('ar-scale', b.dataset.escala || 'auto');
+    visor.setAttribute('alt', `${b.dataset.titulo} en 3D. Arrastrá para rotarlo.`);
+    visor.src = b.dataset.src;                              // dispara la carga; el evento 'load' reconfigura todo
+
+    document.getElementById('veh-titulo').textContent = b.dataset.titulo;
+    document.getElementById('sp-motor').textContent = b.dataset.motor;
+    document.getElementById('sp-anio').textContent = b.dataset.anio;
+    document.getElementById('sp-trans').textContent = b.dataset.trans;
+
+    // El color vuelve a "Original" al cambiar de auto.
+    swatches.forEach(x => {
+      const orig = x.dataset.color === 'original';
+      x.classList.toggle('is-active', orig);
+      x.setAttribute('aria-checked', String(orig));
+    });
+    nombreColor.textContent = 'Original';
+    panelAnim.hidden = true;
+  }));
 })();
