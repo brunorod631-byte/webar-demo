@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Generador de QR · Demo WebAR</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .qr-card { max-width: 480px; margin: 24px auto; padding: 24px; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); text-align: center; }
+    .qr-card input { width: 100%; padding: 12px; font: inherit; border: 1.5px solid #cfd4dc; border-radius: 10px; margin: 8px 0 16px; }
+    #qr { display: inline-block; padding: 16px; background: #fff; border-radius: 12px; }
+    #qr canvas, #qr img { display: block; }
+    .btn { display: inline-block; margin-top: 16px; padding: 12px 20px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    @media print { input, .btn, .noprint { display: none !important; } body { background: #fff; } }
+  </style>
+  <!-- Librería de QR (se ejecuta en el navegador, no se sube nada a ningún servidor) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="qr-card">
+    <h1>QR para el local</h1>
+    <p class="noprint">Pegá la URL pública (HTTPS) donde quedó publicada la ficha. Si abrís esta página desde esa misma URL, se completa sola.</p>
+    <label for="url" class="noprint"><strong>URL de la ficha</strong></label>
+    <input id="url" type="url" placeholder="https://tu-demo.netlify.app/" />
+    <div id="qr"></div>
+    <p><strong>Escaneá y mirá el auto en tu espacio</strong></p>
+    <button class="btn" onclick="window.print()">Imprimir / guardar PDF</button>
+    <p class="noprint"><a href="index.html">← Volver a la ficha</a></p>
+  </div>
+
+  <script>
+    const input = document.getElementById('url');
+    const cont = document.getElementById('qr');
+    let qr;
+
+    function dibujar() {
+      const url = input.value.trim();
+      cont.innerHTML = '';
+      if (!url) return;
+      qr = new QRCode(cont, { text: url, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+    }
+
+    // Por defecto: la URL de index.html en el mismo sitio donde estás parado.
+    if (location.protocol.startsWith('http')) {
+      input.value = new URL('index.html', location.href).href.replace(/index\.html$/, '');
+    }
+    input.addEventListener('input', dibujar);
+    dibujar();
+  </script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+/* ============================================================
+   style.css — estilos de la ficha. Enfoque "mobile first":
+   el diseño base es para celular y se ensancha con @media.
+   Para cambiar la identidad de marca del cliente, editá las
+   variables de :root.
+   ============================================================ */
+:root {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --text: #15181e;
+  --muted: #6b7280;
+  --accent: #0b5fff;        /* color de marca (botones) */
+  --accent-dark: #0846c2;
+  --radius: 18px;
+  --shadow: 0 10px 30px rgba(15, 23, 42, .08);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.5;
+}
+
+/* ---------- Cabecera ---------- */
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--card);
+  border-bottom: 1px solid #e6e8ec;
+  position: sticky; top: 0; z-index: 10;
+}
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-size: 1.05rem; }
+.brand strong { color: var(--accent); }
+.tag { font-size: .75rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #e8f0ff; color: var(--accent); }
+
+/* ---------- Layout principal ---------- */
+.product {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ---------- Visor 3D ---------- */
+.viewer-wrap {
+  background: radial-gradient(circle at 50% 30%, #ffffff, #e9ecf2);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  position: relative;
+}
+
+/* IMPORTANTE: model-viewer necesita un alto explícito, si no, mide 0. */
+model-viewer {
+  display: block;
+  width: 100%;
+  height: 58vh;
+  min-height: 320px;
+  max-height: 560px;
+  --poster-color: transparent;   /* fondo transparente antes de cargar */
+  --progress-bar-color: transparent; /* usamos nuestra barra propia */
+}
+
+/* Botón de RA personalizado (slot="ar-button") */
+.ar-btn {
+  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 22px;
+  font: inherit; font-weight: 700; font-size: 1rem;
+  color: #fff; background: var(--accent);
+  border: 0; border-radius: 999px;
+  box-shadow: 0 8px 20px rgba(11, 95, 255, .35);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ar-btn:hover { background: var(--accent-dark); }
+.ar-btn:active { transform: translateX(-50%) scale(.97); }
+
+/* Barra de progreso de carga */
+.progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(0,0,0,.06); transition: opacity .4s; }
+.progress.done { opacity: 0; }
+.progress-fill { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+.ar-aviso { margin: 0; padding: 10px 16px; font-size: .85rem; color: var(--muted); text-align: center; background: #fff8e1; }
+
+/* ---------- Panel de información ---------- */
+.info {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+.eyebrow { margin: 0; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
+h1 { margin: 4px 0 6px; font-size: 1.6rem; line-height: 1.2; }
+.price { margin: 0 0 16px; font-size: 1.35rem; font-weight: 800; }
+.price small { font-size: .75rem; font-weight: 400; color: var(--muted); }
+
+.specs { list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.specs li { background: var(--bg); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; }
+.specs span { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.specs strong { font-size: .95rem; }
+
+/* Selector de color */
+.colors { border: 0; margin: 0 0 18px; padding: 0; }
+.colors legend { padding: 0; margin-bottom: 8px; font-size: .9rem; color: var(--muted); }
+.colors legend strong { color: var(--text); }
+.swatches { display: flex; gap: 12px; flex-wrap: wrap; }
+.swatch {
+  width: 40px; height: 40px;           /* ≥ 40px: cómodo para el dedo */
+  border-radius: 50%;
+  background: var(--c);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1.5px #cfd4dc;
+  cursor: pointer; padding: 0;
+  transition: transform .15s, box-shadow .15s;
+}
+.swatch:hover { transform: scale(1.08); }
+.swatch.is-active { box-shadow: 0 0 0 3px var(--accent); }
+.swatch:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+.cta {
+  display: block; text-align: center; text-decoration: none;
+  padding: 14px; border-radius: 12px; font-weight: 700;
+  color: var(--accent); border: 2px solid var(--accent);
+}
+.cta:hover { background: #e8f0ff; }
+.hint { font-size: .85rem; color: var(--muted); margin: 14px 0 0; }
+
+.site-footer { text-align: center; padding: 24px 16px 36px; color: var(--muted); font-size: .85rem; }
+.site-footer p { margin: 4px 0; }
+.site-footer a { color: var(--accent); }
+
+/* ---------- Pantallas anchas: visor a la izquierda, ficha a la derecha ---------- */
+@media (min-width: 900px) {
+  .product { grid-template-columns: 1.6fr 1fr; align-items: start; padding: 28px 24px; gap: 24px; }
+  model-viewer { height: 620px; max-height: none; }
+  h1 { font-size: 2rem; }
+  .info { position: sticky; top: 90px; }
+}
+
+/* Respeta a quienes piden menos animación */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

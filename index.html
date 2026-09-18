@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <!-- viewport: imprescindible para que se vea bien en celular -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ficha de vehículo · Demo WebAR</title>
+  <meta name="description" content="Demo de Realidad Aumentada en el navegador: mirá el vehículo en tu espacio." />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!--
+    ==========================================================
+    1) LIBRERÍA <model-viewer> (web component de Google)
+    ==========================================================
+    Se carga desde CDN, con la versión fijada (4.3.1) para que una
+    actualización futura no rompa la demo sin avisar.
+    - type="module": el script es un módulo ES; registra la etiqueta
+      <model-viewer> en el navegador.
+    - Alternativa sin internet: bajar model-viewer.min.js a /assets y
+      apuntar el src ahí.
+  -->
+  <script type="module"
+          src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+</head>
+
+<body>
+  <!-- ====== Cabecera de la "automotora" (marca placeholder) ====== -->
+  <header class="site-header">
+    <a class="brand" href="#">
+      <img src="assets/logo.svg" alt="" width="36" height="36" />
+      <span>AutoMotora <strong>Demo</strong></span>
+    </a>
+    <span class="tag">Nuevo · 0 km</span>
+  </header>
+
+  <main class="product">
+    <!-- ====== Visor 3D ====== -->
+    <section class="viewer-wrap" aria-label="Visor 3D del vehículo">
+
+      <!--
+        ==========================================================
+        2) EL VISOR <model-viewer>: qué hace cada atributo
+        ==========================================================
+        id="visor"            → para manejarlo desde script.js.
+
+        src="models/auto-demo.glb"
+          ★★★ AQUÍ REEMPLAZÁS EL MODELO POR EL DEL AUTO REAL ★★★
+          Poné tu archivo .glb en /models y cambiá esta ruta
+          (ej: models/hilux-2025.glb). Ver README.md.
+          También acepta una URL absoluta (https://...).
+
+        alt="..."             → texto alternativo (accesibilidad y SEO).
+
+        ar                    → habilita el botón de Realidad Aumentada.
+        ar-modes="webxr scene-viewer quick-look"
+                              → orden de preferencia de los "motores" de RA:
+                                · webxr        → Android/Chrome, dentro de la web
+                                · scene-viewer → Android (app de Google), respaldo
+                                · quick-look   → iPhone/iPad (Safari, AR Quick Look)
+                                El navegador usa el primero que soporte.
+        ar-scale="auto"       → el usuario puede agrandar/achicar en RA.
+                                Con "fixed" queda a tamaño real (ideal para
+                                un auto real: la escala debe estar bien en el .glb).
+        ar-placement="floor"  → el modelo se apoya en el piso (vs "wall").
+
+        camera-controls       → permite rotar (arrastrar), zoom (pellizcar/
+                                rueda) sin entrar a RA.
+        touch-action="pan-y"  → en celular, deslizar verticalmente sigue
+                                haciendo scroll de la página (si no, el visor
+                                "atrapa" el dedo y no se puede bajar).
+        auto-rotate           → gira solo hasta que el usuario lo toca.
+        shadow-intensity="0"  → sombra bajo el modelo (0 = apagada). Con el ToyCar de ejemplo
+                                está en 0 porque la tela oculta proyectaría sombra; con tu
+                                auto real ponelo en 1.
+        shadow-softness="1"   → qué tan difusa es esa sombra.
+        environment-image="neutral"
+                              → iluminación de estudio incluida (reflejos
+                                realistas en carrocería/vidrios).
+        exposure="1"          → brillo general de la escena.
+        camera-orbit / min-camera-orbit / max-camera-orbit
+                              → posición inicial y límites de la cámara
+                                (ángulo horizontal, vertical, distancia).
+        interaction-prompt    → la "manito" que invita a interactuar.
+        loading="eager" + poster
+                              → imagen mientras baja el .glb (pesa varios MB).
+      -->
+      <model-viewer
+        id="visor"
+        src="models/auto-demo.glb"
+        alt="Vehículo en 3D. Arrastrá para rotarlo."
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        ar-scale="auto"
+        ar-placement="floor"
+        camera-controls
+        touch-action="pan-y"
+        auto-rotate
+        shadow-intensity="0"
+        shadow-softness="1"
+        environment-image="neutral"
+        exposure="1"
+        camera-orbit="35deg 75deg 45%"
+        min-camera-orbit="auto 20deg 20%"
+        max-camera-orbit="auto 100deg auto"
+        interaction-prompt="auto"
+        poster="assets/poster.svg"
+        loading="eager"
+      >
+        <!--
+          slot="ar-button": personaliza el botón de RA. Sin este bloque,
+          model-viewer muestra un botón por defecto (ícono pequeño).
+          Solo se ve en dispositivos compatibles con RA.
+        -->
+        <button slot="ar-button" class="ar-btn" type="button">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path fill="currentColor" d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 2.2 6.6 3.7L12 11.6 5.4 7.9 12 4.2ZM5 9.6l6 3.4v6.9l-6-3.3V9.6Zm8 10.3V13l6-3.4v7l-6 3.3Z"/>
+          </svg>
+          Ver en tu espacio
+        </button>
+
+        <!-- slot="progress-bar": barra de carga del modelo. -->
+        <div slot="progress-bar" class="progress"><div class="progress-fill"></div></div>
+      </model-viewer>
+
+      <!-- Aviso que solo aparece si el dispositivo NO soporta RA (lo activa script.js) -->
+      <p id="ar-aviso" class="ar-aviso" hidden>
+        💡 Abrí esta página desde tu celular para ver el vehículo en tu espacio.
+      </p>
+    </section>
+
+    <!-- ====== Datos de la ficha ====== -->
+    <section class="info">
+      <p class="eyebrow">Modelo destacado</p>
+      <h1>Compact Sport 1.6 Turbo</h1>
+      <p class="price">USD 24.900 <small>· precio de ejemplo</small></p>
+
+      <ul class="specs" aria-label="Especificaciones">
+        <li><span>Motor</span><strong>1.6 Turbo · 150 CV</strong></li>
+        <li><span>Año</span><strong>2026</strong></li>
+        <li><span>Transmisión</span><strong>Automática 6 vel.</strong></li>
+        <li><span>Combustible</span><strong>Nafta</strong></li>
+      </ul>
+
+      <!-- Selector de color: script.js lee data-color de cada botón -->
+      <fieldset class="colors">
+        <legend>Color: <strong id="color-nombre">Original</strong></legend>
+        <div class="swatches" role="radiogroup" aria-label="Elegir color">
+          <button type="button" class="swatch is-active" role="radio" aria-checked="true"
+                  data-color="original" data-nombre="Original" style="--c:#d9d9d9" title="Original"></button>
+          <button type="button" class="swatch" role="radio" aria-checked="false"
+                  data-color="#c1272d" data-nombre="Rojo" style="--c:#c1272d" title="Rojo"></button>
+          <button type="button" class="swatch" role="radio" aria-checked="false"
+                  data-color="#2456c9" data-nombre="Azul" style="--c:#2456c9" title="Azul"></button>
+          <button type="button" class="swatch" role="radio" aria-checked="false"
+                  data-color="#2f9e57" data-nombre="Verde" style="--c:#2f9e57" title="Verde"></button>
+          <button type="button" class="swatch" role="radio" aria-checked="false"
+                  data-color="#f2b705" data-nombre="Amarillo" style="--c:#f2b705" title="Amarillo"></button>
+          <button type="button" class="swatch" role="radio" aria-checked="false"
+                  data-color="#1b1b1f" data-nombre="Negro" style="--c:#1b1b1f" title="Negro"></button>
+        </div>
+      </fieldset>
+
+      <a class="cta" href="#contacto">Consultar por este vehículo</a>
+      <p class="hint">
+        📱 Tocá <strong>“Ver en tu espacio”</strong> para ver el auto a escala en tu cochera o en el salón.
+      </p>
+    </section>
+  </main>
+
+  <footer id="contacto" class="site-footer">
+    <p>Demo de Realidad Aumentada en el navegador · sin instalar ninguna app.</p>
+    <p><a href="qr.html">Generar QR para el local →</a></p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
