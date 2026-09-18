@@ -60,3 +60,7 @@ Detalle: si el celular no es compatible, el botón no se muestra y aparece un av
 ## QR para el local
 
 Abrí `qr.html` (ya publicada, así toma la URL sola), revisá la URL y usá **Imprimir / guardar PDF**, o descargá el QR con clic derecho. También podés generarlo en cualquier generador (ej. qr-code-generator.com) apuntando a la URL pública.
+
+## Créditos
+
+`models/auto-demo.glb`: ToyCar, Khronos glTF Sample Assets (CC BY 4.0, Guido Odendahl / Eric Chadwick). Es solo un placeholder de demostración.
