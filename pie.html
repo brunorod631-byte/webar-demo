@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Probar en tu pie · Demo WebAR</title>
+  <meta name="description" content="Prototipo experimental: probá una zapatilla en tu pie con la cámara del celular." />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!--
+    three.js: librería 3D para la web. Acá se usa para dibujar la zapatilla
+    encima del video de la cámara. El "importmap" le dice al navegador de
+    dónde bajar 'three' y sus complementos (GLTFLoader lee archivos .glb).
+  -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="brand" href="pruebas.html">
+      <img src="assets/logo.svg" alt="" width="36" height="36" />
+      <span>Laboratorio <strong>RA</strong></span>
+    </a>
+    <nav class="demos"><a href="index.html">Autos</a><a href="menu.html">Restaurante</a><a class="is-on" href="pruebas.html">Pruebas</a></nav>
+  </header>
+
+  <main class="cam-page">
+    <h1>Probar en tu pie <span class="badge">experimental</span></h1>
+    <p class="cam-help">
+      La cámara detecta tus pies y la zapatilla se dibuja encima. Apoyá el celular
+      a unos 2 metros, con <strong>todo el cuerpo a la vista</strong> (o pedile a alguien que te filme).
+      La imagen se procesa en tu celular: no se envía ni se guarda nada.
+    </p>
+
+    <!-- Escena: el video de la cámara y, encima, dos capas transparentes:
+         #c3d (la zapatilla en 3D) y #cpts (puntos de depuración). -->
+    <div id="cam" class="cam-stage">
+      <video id="video" playsinline muted autoplay></video>
+      <canvas id="c3d"></canvas>
+      <canvas id="cpts"></canvas>
+      <p id="estado" class="cam-status">Tocá “Activar cámara” para empezar.</p>
+    </div>
+
+    <div class="cam-actions">
+      <button id="btnCam" class="cta cta-solid" type="button">📷 Activar cámara</button>
+      <button id="btnDemo" class="cta" type="button">▶ Modo demo (sin cámara)</button>
+    </div>
+
+    <!-- Ajustes: sirven para afinar el prototipo probándolo en el celular. -->
+    <fieldset class="cam-tune">
+      <legend>Ajustes</legend>
+      <label>Tamaño <input id="tam" type="range" min="0.6" max="1.8" step="0.05" value="1.1" /></label>
+      <label>Vista
+        <select id="vista">
+          <option value="arriba">Desde arriba</option>
+          <option value="lado">De costado</option>
+        </select>
+      </label>
+      <label><input id="invertir" type="checkbox" /> Invertir izquierdo/derecho</label>
+      <label><input id="puntos" type="checkbox" checked /> Mostrar puntos detectados</label>
+    </fieldset>
+  </main>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    /* ==========================================================
+       CÓMO FUNCIONA (resumen)
+       ==========================================================
+       1. getUserMedia abre la cámara y la muestra en <video>.
+       2. MediaPipe "Pose Landmarker" mira cada cuadro y devuelve 33 puntos
+          del cuerpo. Nos interesan 6: tobillo, talón y punta de cada pie
+          (índices 27-32).
+       3. Con talón→punta calculamos hacia dónde apunta el pie y qué
+          tamaño tiene en pantalla.
+       4. three.js dibuja la zapatilla en ese lugar, girada y escalada.
+       Todo corre en el navegador; no hay servidor.
+       ========================================================== */
+
+    const $ = (s) => document.querySelector(s);
+    const wrap = $('#cam'), video = $('#video'), c3d = $('#c3d'), cpts = $('#cpts');
+    const estado = $('#estado');
+    const ctxPts = cpts.getContext('2d');
+
+    // Índices de MediaPipe Pose: [tobillo, talón, punta] de cada pie.
+    const PIES = { izq: [27, 29, 31], der: [28, 30, 32] };
+
+    /* ---------- three.js: escena 2D "en píxeles" ----------
+       Usamos una cámara ortográfica cuyas unidades son píxeles del video, así
+       la posición de un punto detectado (x,y en px) es directamente su
+       posición en la escena. Ojo: en pantalla Y crece hacia abajo, en three.js
+       hacia arriba; por eso se usa -y. */
+    const renderer = new THREE.WebGLRenderer({ canvas: c3d, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const scene = new THREE.Scene();
+    scene.add(new THREE.AmbientLight(0xffffff, 1.2)); // el material del modelo es "unlit"; por las dudas
+    let camera, W = 1, H = 1;
+
+    function ajustarTamano() {
+      W = wrap.clientWidth; H = wrap.clientHeight;
+      renderer.setSize(W, H, false);
+      cpts.width = W; cpts.height = H;
+      camera = new THREE.OrthographicCamera(0, W, 0, -H, -3000, 3000);
+      camera.position.z = 1000;
+    }
+    new ResizeObserver(ajustarTamano).observe(wrap);
+
+    /* ---------- Modelo de la zapatilla ----------
+       En el modelo, el eje Z es el largo (punta = -Z, talón = +Z), Y es
+       "arriba" y X es el ancho. Se centra en el origen para poder girarlo
+       alrededor de su centro. */
+    let largoModelo = 1;
+    const pivotes = { izq: new THREE.Group(), der: new THREE.Group() };
+    async function cargarZapatilla() {
+      const gltf = await new GLTFLoader().loadAsync('models/zapatilla-escolar.glb');
+      const raiz = gltf.scene;
+      const caja = new THREE.Box3().setFromObject(raiz);
+      largoModelo = caja.getSize(new THREE.Vector3()).z;
+      raiz.position.sub(caja.getCenter(new THREE.Vector3()));
+      for (const k of ['izq', 'der']) {
+        pivotes[k].add(raiz.clone(true));
+        pivotes[k].visible = false;
+        scene.add(pivotes[k]);
+      }
+    }
+
+    /* ---------- Ajustes de la interfaz ---------- */
+    const ui = {
+      tam: () => parseFloat($('#tam').value),
+      vista: () => $('#vista').value,
+      invertir: () => $('#invertir').checked,
+      puntos: () => $('#puntos').checked,
+    };
+
+    /* ---------- Colocar la zapatilla sobre un pie ----------
+       talon y punta: {x, y} en píxeles de pantalla. */
+    const _m = new THREE.Matrix4();
+    function colocar(pivote, talon, punta, espejar) {
+      const dx = punta.x - talon.x, dy = -(punta.y - talon.y); // dy con Y hacia arriba
+      const largo = Math.hypot(dx, dy);
+      if (largo < 8) { pivote.visible = false; return; }
+
+      // Ejes de la zapatilla en el mundo:
+      //  - adelante (punta) = dirección talón→punta, en el plano de la pantalla
+      //  - arriba = hacia la cámara (vista "desde arriba") o hacia arriba de la pantalla (de costado)
+      const adelante = new THREE.Vector3(dx / largo, dy / largo, 0);
+      let arriba = new THREE.Vector3(0, 0, 1);
+      if (ui.vista() === 'lado') {
+        arriba = new THREE.Vector3(-adelante.y, adelante.x, 0);
+        if (arriba.y < 0) arriba.negate();
+      }
+      const z = adelante.clone().negate();               // el modelo tiene la punta hacia -Z
+      const x = new THREE.Vector3().crossVectors(arriba, z).normalize();
+      _m.makeBasis(x, arriba, z);
+      pivote.quaternion.setFromRotationMatrix(_m);
+
+      // La zapatilla es algo más larga que la distancia talón→punta detectada.
+      const s = (largo * 1.1 * ui.tam()) / largoModelo;
+      pivote.scale.set(espejar ? -s : s, s, s);          // escala X negativa = espejo (pie opuesto)
+      pivote.position.set((talon.x + punta.x) / 2, -(talon.y + punta.y) / 2, 0);
+      pivote.visible = true;
+    }
+
+    /* ---------- Suavizado ----------
+       Los puntos detectados "tiemblan"; se mezcla cada nuevo valor con el
+       anterior (media móvil exponencial) para que la zapatilla no vibre. */
+    const suave = { izq: null, der: null };
+    function suavizar(k, talon, punta) {
+      const a = 0.45; // 0 = muy suave y lento, 1 = sin suavizado
+      const prev = suave[k];
+      if (!prev) return (suave[k] = { talon: { ...talon }, punta: { ...punta } });
+      for (const [p, n] of [[prev.talon, talon], [prev.punta, punta]]) {
+        p.x += (n.x - p.x) * a; p.y += (n.y - p.y) * a;
+      }
+      return prev;
+    }
+
+    /* ---------- Dibujo de puntos de depuración ---------- */
+    function dibujarPuntos(lista) {
+      ctxPts.clearRect(0, 0, W, H);
+      if (!ui.puntos()) return;
+      const colores = ['#4da3ff', '#ff5a5a', '#3ddc84']; // tobillo, talón, punta
+      for (const pts of lista) pts.forEach((p, i) => {
+        ctxPts.fillStyle = colores[i];
+        ctxPts.beginPath(); ctxPts.arc(p.x, p.y, 6, 0, Math.PI * 2); ctxPts.fill();
+      });
+    }
+
+    /* Aplica los puntos de un cuadro. pies = { izq: [tobillo, talon, punta], der: [...] } con
+       cada punto {x, y, v} (v = visibilidad 0–1) en píxeles. */
+    function aplicar(pies) {
+      const dibujar = [];
+      for (const k of ['izq', 'der']) {
+        const p = pies[k];
+        if (!p || p[1].v < 0.4 || p[2].v < 0.4) { pivotes[k].visible = false; suave[k] = null; continue; }
+        const s = suavizar(k, p[1], p[2]);
+        // Pie izquierdo del modelo normal; el otro se espeja (o al revés si se marca "invertir").
+        colocar(pivotes[k], s.talon, s.punta, (k === 'der') !== ui.invertir());
+        dibujar.push(p);
+      }
+      dibujarPuntos(dibujar);
+      renderer.render(scene, camera);
+    }
+
+    /* ==========================================================
+       MODO DEMO: puntos falsos animados (sirve para ver cómo queda la
+       zapatilla sin cámara y para calibrar orientación/tamaño en la PC).
+       ========================================================== */
+    let demoActivo = false;
+    function demoCuadro(t) {
+      const ang = (Math.sin(t / 1500) * 0.5);            // el pie "gira" de un lado a otro
+      const L = H * 0.32;
+      const pie = (cx, a) => {
+        const talon = { x: cx, y: H * 0.78, v: 1 };
+        const punta = { x: cx + Math.sin(a) * L, y: H * 0.78 - Math.cos(a) * L, v: 1 };
+        return [{ x: cx, y: H * 0.7, v: 1 }, talon, punta];
+      };
+      aplicar({ izq: pie(W * 0.35, ang), der: pie(W * 0.65, -ang) });
+    }
+
+    /* ==========================================================
+       CÁMARA + MEDIAPIPE
+       ========================================================== */
+    let landmarker = null, camaraActiva = false, ultimoTiempo = -1;
+
+    async function iniciarMediaPipe() {
+      estado.textContent = 'Cargando detector de poses…';
+      // Se importa recién acá: si falla la descarga, el modo demo sigue funcionando.
+      const { PoseLandmarker, FilesetResolver } = await import(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs');
+      const fileset = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm');
+      const opciones = (delegate) => ({
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task',
+          delegate,                                       // GPU = más rápido; CPU = más compatible
+        },
+        runningMode: 'VIDEO', numPoses: 1,
+      });
+      try { landmarker = await PoseLandmarker.createFromOptions(fileset, opciones('GPU')); }
+      catch { landmarker = await PoseLandmarker.createFromOptions(fileset, opciones('CPU')); }
+    }
+
+    async function activarCamara() {
+      try {
+        if (!landmarker) await iniciarMediaPipe();
+        estado.textContent = 'Abriendo cámara…';
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        video.srcObject = stream;
+        await video.play();
+
+        // Cámara frontal (selfie): se espeja la imagen como en un espejo. Si es la trasera, no.
+        const facing = stream.getVideoTracks()[0].getSettings().facingMode;
+        wrap.classList.toggle('espejo', facing !== 'environment');
+
+        // El contenedor toma la proporción del video para que los puntos coincidan con la imagen.
+        wrap.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+        wrap.classList.add('activa');
+        demoActivo = false; camaraActiva = true;
+        estado.textContent = 'Buscando tus pies… (que se vea el cuerpo entero)';
+        $('#btnCam').textContent = '📷 Cámara activa';
+      } catch (e) {
+        console.error(e);
+        estado.textContent = e.name === 'NotAllowedError'
+          ? 'Permiso de cámara denegado. Habilitalo en el navegador y probá de nuevo.'
+          : 'No se pudo iniciar: ' + (e.message || e.name);
+      }
+    }
+
+    function bucle(t) {
+      requestAnimationFrame(bucle);
+      if (!camera) return;
+      if (demoActivo) return demoCuadro(t);
+      if (!camaraActiva || !landmarker || video.readyState < 2) return;
+      if (video.currentTime === ultimoTiempo) return;     // no procesar el mismo cuadro dos veces
+      ultimoTiempo = video.currentTime;
+
+      const r = landmarker.detectForVideo(video, performance.now());
+      const lm = r.landmarks && r.landmarks[0];
+      if (!lm) { estado.textContent = 'No te veo. Alejate un poco para que entre el cuerpo.'; aplicar({}); return; }
+      estado.textContent = '';
+      const pt = (i) => ({ x: lm[i].x * W, y: lm[i].y * H, v: lm[i].visibility ?? 1 });
+      aplicar({ izq: PIES.izq.map(pt), der: PIES.der.map(pt) });
+    }
+
+    $('#btnCam').addEventListener('click', activarCamara);
+    $('#btnDemo').addEventListener('click', () => {
+      camaraActiva = false; demoActivo = !demoActivo;
+      wrap.classList.toggle('activa', demoActivo);
+      if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+      wrap.style.aspectRatio = '9 / 16';
+      estado.textContent = demoActivo ? 'Modo demo: puntos simulados.' : 'Tocá “Activar cámara” para empezar.';
+      $('#btnDemo').textContent = demoActivo ? '■ Salir del modo demo' : '▶ Modo demo (sin cámara)';
+      if (!demoActivo) { aplicar({}); }
+    });
+
+    await cargarZapatilla();
+    ajustarTamano();
+    requestAnimationFrame(bucle);
+    window.__pie = { pivotes, aplicar };                // para depurar desde la consola
+  </script>
+</body>
+</html>

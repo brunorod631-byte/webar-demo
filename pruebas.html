@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <!-- viewport: imprescindible para que se vea bien en celular -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pruebas · Demo WebAR</title>
+  <meta name="description" content="Demo de Realidad Aumentada en el navegador: pruebas de Realidad Aumentada." />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!--
+    ==========================================================
+    1) LIBRERÍA <model-viewer> (web component de Google)
+    ==========================================================
+    Se carga desde CDN, con la versión fijada (4.3.1) para que una
+    actualización futura no rompa la demo sin avisar.
+    - type="module": el script es un módulo ES; registra la etiqueta
+      <model-viewer> en el navegador.
+    - Alternativa sin internet: bajar model-viewer.min.js a /assets y
+      apuntar el src ahí.
+  -->
+  <script type="module"
+          src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="brand" href="pruebas.html">
+      <img src="assets/logo.svg" alt="" width="36" height="36" />
+      <span>Laboratorio <strong>RA</strong></span>
+    </a>
+    <nav class="demos"><a href="index.html">Autos</a><a href="menu.html">Restaurante</a><a class="is-on" href="pruebas.html">Pruebas</a></nav>
+  </header>
+
+  <main class="product">
+    <section class="viewer-wrap" aria-label="Visor 3D de la zapatilla">
+      <!--
+        Zapatilla en RA "de superficie" (igual que la pizza: se apoya en el piso).
+        scale="0.75 0.75 0.75": el modelo original mide ~40 cm de largo; así
+        queda ~30 cm, tamaño realista de un calzado adulto (ajustar según el modelo).
+      -->
+      <model-viewer
+        id="visor"
+        src="models/zapatilla-escolar.glb"
+        alt="Zapatilla en 3D. Arrastrá para rotarla."
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        scale="0.75 0.75 0.75"
+        ar-scale="auto"
+        ar-placement="floor"
+        camera-controls
+        touch-action="pan-y"
+        auto-rotate
+        shadow-intensity="1"
+        shadow-softness="1"
+        environment-image="neutral"
+        exposure="1"
+        camera-orbit="40deg 70deg auto"
+        min-camera-orbit="auto 10deg auto"
+        max-camera-orbit="auto 170deg auto"
+        interaction-prompt="auto"
+        poster="assets/poster.svg"
+        loading="eager"
+      >
+        <button slot="ar-button" class="ar-btn" type="button">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path fill="currentColor" d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 2.2 6.6 3.7L12 11.6 5.4 7.9 12 4.2ZM5 9.6l6 3.4v6.9l-6-3.3V9.6Zm8 10.3V13l6-3.4v7l-6 3.3Z"/>
+          </svg>
+          Ver en el piso
+        </button>
+        <div slot="progress-bar" class="progress"><div class="progress-fill"></div></div>
+      </model-viewer>
+      <p id="ar-aviso" class="ar-aviso" hidden>
+        💡 Abrí esta página desde tu celular para ver la zapatilla en el piso.
+      </p>
+    </section>
+
+    <section class="info">
+      <p class="eyebrow">Prueba · calzado</p>
+      <h1>Zapatilla escolar</h1>
+      <p class="price">$ 000 <small>· precio de ejemplo</small></p>
+
+      <ul class="specs" aria-label="Detalles">
+        <li><span>Uso</span><strong>Escolar</strong></li>
+        <li><span>Vista</span><strong>3D + piso</strong></li>
+      </ul>
+
+      <a class="cta cta-solid" href="pie.html">👟 Probar en tu pie (experimental)</a>
+      <p class="hint">
+        📱 <strong>“Ver en el piso”</strong> apoya la zapatilla a tamaño real frente a vos.
+        <strong>“Probar en tu pie”</strong> usa la cámara para intentar calzarla (prototipo).
+      </p>
+    </section>
+  </main>
+
+  <footer id="contacto" class="site-footer">
+    <p>Sección de pruebas · lo que se ve acá es experimental.</p>
+    <p class="credit">Modelo 3D: “school_shoe” (autoría y licencia: pendiente de confirmar).</p>
+    <p id="firma"></p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

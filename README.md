@@ -5,6 +5,8 @@ HTML/CSS/JS plano, sin build ni frameworks. Pensada para automotoras, pero gené
 
 ```
 index.html   demo Autos: ficha de vehículo + visor <model-viewer> (todo comentado)
+pruebas.html laboratorio: zapatilla en RA de superficie
+pie.html     prototipo experimental: zapatilla sobre el pie con la cámara (MediaPipe + three.js)
 menu.html    demo Restaurante: ficha de plato (pizza), misma base sin selector de color
 style.css    estilos (variables de marca en :root)
 script.js    cambio de color, aviso de RA, barra de carga
@@ -71,3 +73,7 @@ Modelo `models/pizza-bigboss.glb`: basado en "Pizza "BigBoss" Pancho" (https://s
 ## Agregar otra demo (otro rubro)
 
 Copiá `menu.html` como base, cambiá `src`, los textos y (si aplica) `data-materiales-color`, y sumá el link en el `<nav class="demos">` de las páginas. Si el modelo trae un tamaño irreal, corregilo con el atributo `scale` (ver comentario en `menu.html`).
+
+## Prueba: zapatilla sobre el pie (experimental)
+
+`pie.html` usa la cámara del celular, detecta talón y punta de cada pie con MediaPipe Pose (33 puntos del cuerpo) y dibuja la zapatilla con three.js. Corre 100 % en el navegador. Limitaciones conocidas: la zapatilla puede temblar, no la tapa la pierna, y el cuerpo entero tiene que verse (≈2 m). Tiene un "Modo demo" con puntos simulados para calibrar sin cámara. El modelo `models/zapatilla-escolar.glb` se recortó para quitar la base de terreno del escaneo (autoría y licencia: pendiente de confirmar).
