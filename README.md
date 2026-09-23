@@ -18,7 +18,7 @@ Pensada para automotoras, pero genérica: cambiando el `.glb` y los textos sirve
 
 | Página | Qué hace | Estado |
 |---|---|---|
-| `index.html` | Ficha de vehículo: selector de autos, cambio de color de carrocería, animaciones (puertas, baúl) y RA a escala real | Demo funcional |
+| `index.html` | Ficha de vehículo: selector de autos, cambio de color de carrocería, panel de animaciones (si el modelo las trae) y RA a escala real | Demo funcional |
 | `menu.html` | Ficha de plato para restaurante en RA | Demo funcional |
 | `qr.html` | Generador de QR imprimible para el local | Demo funcional |
 | `xr.html` | Personaje interactivo en RA y VR con three.js + WebXR | Experimental |
@@ -116,7 +116,6 @@ Copiá `menu.html` como base, cambiá `src`, los textos y (si aplica) `data-mate
 
 `pie.html` usa la cámara del celular, detecta talón y punta de cada pie con MediaPipe Pose (33 puntos del cuerpo) y dibuja la zapatilla con three.js. Corre 100 % en el navegador. Limitaciones conocidas: la zapatilla puede temblar, no la tapa la pierna, y el cuerpo entero tiene que verse (≈2 m). Tiene un "Modo demo" con puntos simulados para calibrar sin cámara. El modelo `models/zapatilla-escolar.glb` se recortó para quitar la base de terreno del escaneo (autoría y licencia: pendiente de confirmar).
 
-Modelo `models/golf-gti-2024.glb`: "Volkswagen Golf GTI (2024)" de geyges (https://sketchfab.com/3d-models/volkswagen-golf-gti-2024-9adf944b16a74ab986e151cc86390bbb), licencia **Sketchfab Standard** (no es Creative Commons: permite uso comercial dentro de tus obras pero **no redistribuir el archivo del modelo por separado**). Al estar publicado en un sitio público, el `.glb` es descargable: usarlo solo para pruebas y retirarlo antes de mostrar a terceros, o mantener el repo/hosting privado. Trae 12 animaciones (puertas, baúl, techo solar…), se comprimió con Draco y **sin** fusionar materiales (`--palette false`, para conservar el material de pintura `Rojo_Kings_...`).
 
 ### Animaciones y varios autos en la ficha
 
