@@ -1,9 +1,46 @@
-# Demo WebAR · Ficha de vehículo
+# WebAR · Productos en realidad aumentada desde el navegador
 
-Demo de Realidad Aumentada en el navegador con [`<model-viewer>`](https://modelviewer.dev) de Google.
-HTML/CSS/JS plano, sin build ni frameworks. Pensada para automotoras, pero genérica: cambiando el `.glb` y los textos sirve para cualquier rubro.
+**[Ver demo en vivo](https://brunorod631-byte.github.io/webar-demo)** · funciona en el celular, sin instalar ninguna app.
 
-```
+Fichas de producto en realidad aumentada: el cliente escanea un QR o abre un enlace y ve el producto (un auto, un plato) a escala real en su propio espacio.
+
+## Problema
+
+Mostrar un producto físico en una web se limita a fotos. Las soluciones de RA suelen exigir descargar una app, lo que frena a la mayoría de los usuarios.
+
+## Solución
+
+Páginas web estáticas que usan la RA nativa del teléfono (WebXR / Scene Viewer en Android, AR Quick Look en iPhone). Sin build ni backend: se publican en cualquier hosting estático con HTTPS.
+
+Pensada para automotoras, pero genérica: cambiando el `.glb` y los textos sirve para cualquier rubro.
+
+## Qué incluye
+
+| Página | Qué hace | Estado |
+|---|---|---|
+| `index.html` | Ficha de vehículo: selector de autos, cambio de color de carrocería, animaciones (puertas, baúl) y RA a escala real | Demo funcional |
+| `menu.html` | Ficha de plato para restaurante en RA | Demo funcional |
+| `qr.html` | Generador de QR imprimible para el local | Demo funcional |
+| `xr.html` | Personaje interactivo en RA y VR con three.js + WebXR | Experimental |
+| `pie.html` | Zapatilla sobre el pie con la cámara (MediaPipe Pose + three.js) | Experimental |
+| `pruebas.html` | Laboratorio: zapatilla en RA de superficie | Experimental |
+
+## Stack
+
+HTML, CSS y JavaScript sin frameworks · [`<model-viewer>`](https://modelviewer.dev) · three.js · WebXR · MediaPipe Pose · modelos glTF comprimidos con Draco (`gltf-transform`) · GitHub Pages
+
+## Desafíos técnicos
+
+- **Compatibilidad entre dispositivos:** Android usa WebXR / Scene Viewer y iPhone AR Quick Look; la página detecta si hay soporte y, si no, muestra un aviso en lugar del botón.
+- **Peso de los modelos:** compresión Draco y texturas a 1024 px para que carguen en redes móviles.
+- **Escala real:** los modelos se ajustan a metros para que el auto aparezca a tamaño real (`ar-scale="fixed"`).
+- **Color del vehículo:** se modifica el material de la carrocería con la API de materiales, conservando materiales separados al optimizar (`--palette false`).
+
+---
+
+## Documentación técnica
+
+```text
 index.html   demo Autos: ficha de vehículo + visor <model-viewer> (todo comentado)
 pruebas.html laboratorio: zapatilla en RA de superficie
 xr.html      personaje animado interactivo en RA y VR con three.js + WebXR (experimental)
