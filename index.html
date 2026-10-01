@@ -86,6 +86,7 @@
       <model-viewer
         id="visor"
         data-materiales-color="paint"
+        data-materiales-llanta="PaletteMaterial003"
         src="models/porsche-911.glb"
         alt="Vehículo en 3D. Arrastrá para rotarlo."
         ar
@@ -134,7 +135,7 @@
       <!-- Selector de vehículo: cada botón trae en data-* el modelo y los datos de la ficha.
            Para sumar otro auto: agregá un botón acá (ver README). -->
       <div class="veh-tabs" role="group" aria-label="Elegir vehículo">
-        <button type="button" class="veh is-on" data-src="models/porsche-911.glb" data-materiales="paint"
+        <button type="button" class="veh is-on" data-src="models/porsche-911.glb" data-materiales="paint" data-llantas="PaletteMaterial003"
                 data-titulo="Porsche 911 Carrera 4S" data-motor="3.0 Bi-Turbo · 450 CV" data-anio="2026"
                 data-trans="PDK 8 vel." data-escala="auto">Porsche 911</button>
       </div>
@@ -164,6 +165,28 @@
                   data-color="#f2b705" data-nombre="Amarillo" style="--c:#f2b705" title="Amarillo"></button>
           <button type="button" class="swatch" role="radio" aria-checked="false"
                   data-color="#1b1b1f" data-nombre="Negro" style="--c:#1b1b1f" title="Negro"></button>
+        </div>
+      </fieldset>
+
+      <!-- Selector de acabado de llantas: script.js lee data-color / data-metal / data-rugosidad.
+           Se oculta solo si el modelo no declara data-materiales-llanta. -->
+      <fieldset class="anims" id="llantas" hidden>
+        <legend>Llantas: <strong id="llanta-nombre">Original</strong></legend>
+        <div class="anim-list" role="radiogroup" aria-label="Elegir acabado de llantas">
+          <button type="button" class="anim-btn llanta is-on" role="radio" aria-checked="true"
+                  data-color="original">Original</button>
+          <button type="button" class="anim-btn llanta" role="radio" aria-checked="false"
+                  data-color="#0c0c0e" data-metal="0.6" data-rugosidad="0.25">Negro brillante</button>
+          <button type="button" class="anim-btn llanta" role="radio" aria-checked="false"
+                  data-color="#141416" data-metal="0.2" data-rugosidad="0.8">Negro mate</button>
+          <button type="button" class="anim-btn llanta" role="radio" aria-checked="false"
+                  data-color="#c9ccd1" data-metal="1" data-rugosidad="0.35">Plata</button>
+          <button type="button" class="anim-btn llanta" role="radio" aria-checked="false"
+                  data-color="#4a4d52" data-metal="1" data-rugosidad="0.4">Gris grafito</button>
+          <button type="button" class="anim-btn llanta" role="radio" aria-checked="false"
+                  data-color="#a8752f" data-metal="1" data-rugosidad="0.4">Bronce</button>
+          <button type="button" class="anim-btn llanta" role="radio" aria-checked="false"
+                  data-color="#f2f2f2" data-metal="1" data-rugosidad="0.05">Cromado</button>
         </div>
       </fieldset>
 
@@ -202,6 +225,6 @@
     <p><a href="qr.html">Generar QR para el local →</a></p>
   </footer>
 
-  <script src="script.js?v=202609181510"></script>
+  <script src="script.js?v=202609301200"></script>
 </body>
 </html>

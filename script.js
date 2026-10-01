@@ -104,6 +104,65 @@ swatches.forEach(btn => {
 });
 
 /* ------------------------------------------------------------
+   ACABADO DE LLANTAS
+   ------------------------------------------------------------
+   Igual que el color, pero cambia el "acabado" completo del material
+   del aro: color + metalizado + rugosidad (brillante / mate / cromado).
+   El material se declara en el <model-viewer>:
+     data-materiales-llanta="PaletteMaterial003"
+   Como ese material trae texturas (color y metal/rugosidad), al aplicar
+   un acabado se quitan para que quede parejo; "Original" las restaura.
+------------------------------------------------------------ */
+const panelLlantas = document.getElementById('llantas');
+const nombreLlanta = document.getElementById('llanta-nombre');
+const botonesLlanta = document.querySelectorAll('.llanta');
+const materialesLlanta = () => lista('materialesLlanta');
+
+function marcarLlanta(btn) {
+  botonesLlanta.forEach(b => {
+    const activo = b === btn;
+    b.classList.toggle('is-on', activo);
+    b.setAttribute('aria-checked', String(activo));
+  });
+  if (nombreLlanta) nombreLlanta.textContent = btn.textContent;
+}
+
+visor.addEventListener('load', () => {
+  if (!panelLlantas) return;
+  const materiales = visor.model.materials.filter(m => materialesLlanta().includes(m.name));
+  // Guardamos el acabado de fábrica de cada material para poder "volver".
+  visor.llantasOriginales = new Map(materiales.map(m => {
+    const p = m.pbrMetallicRoughness;
+    return [m, {
+      color: [...p.baseColorFactor], metal: p.metallicFactor, rugosidad: p.roughnessFactor,
+      texColor: p.baseColorTexture.texture, texMetal: p.metallicRoughnessTexture.texture,
+    }];
+  }));
+  panelLlantas.hidden = materiales.length === 0;
+  marcarLlanta(botonesLlanta[0]);                  // modelo recién cargado → "Original"
+});
+
+function acabarLlantas(btn) {
+  (visor.llantasOriginales || new Map()).forEach((orig, m) => {
+    const p = m.pbrMetallicRoughness;
+    const original = btn.dataset.color === 'original';
+    p.baseColorTexture.setTexture(original ? orig.texColor : null);
+    p.metallicRoughnessTexture.setTexture(original ? orig.texMetal : null);
+    p.setBaseColorFactor(original ? orig.color : hexARgba(btn.dataset.color));
+    p.setMetallicFactor(original ? orig.metal : Number(btn.dataset.metal));
+    p.setRoughnessFactor(original ? orig.rugosidad : Number(btn.dataset.rugosidad));
+  });
+}
+
+botonesLlanta.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!visor.loaded) return; // modelo aún cargando
+    acabarLlantas(btn);
+    marcarLlanta(btn);
+  });
+});
+
+/* ------------------------------------------------------------
    Aviso "no hay RA en este dispositivo"
    ------------------------------------------------------------
    model-viewer expone visor.canActivateAR (true/false) una vez que
@@ -257,6 +316,7 @@ visor.addEventListener('load', construirAnimaciones);
     detenerAnimacion();
     visor.animationName = undefined;
     visor.dataset.materialesColor = b.dataset.materiales || '';  // qué material se pinta en este modelo
+    visor.dataset.materialesLlanta = b.dataset.llantas || '';    // qué material es el aro (vacío = sin selector)
     visor.setAttribute('ar-scale', b.dataset.escala || 'auto');
     if (b.dataset.scale) visor.setAttribute('scale', b.dataset.scale); else visor.removeAttribute('scale');
     visor.setAttribute('alt', `${b.dataset.titulo} en 3D. Arrastrá para rotarlo.`);
