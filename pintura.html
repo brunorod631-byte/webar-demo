@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Probar color de pintura · Demo WebAR</title>
+  <meta name="description" content="Prototipo experimental: apuntá la cámara a un auto y mirá cómo quedaría pintado de otro color." />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css?v=202609301500" />
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="brand" href="pruebas.html">
+      <img src="assets/logo.svg" alt="" width="36" height="36" />
+      <span>Laboratorio <strong>RA</strong></span>
+    </a>
+    <nav class="demos"><a href="index.html">Autos</a><a href="menu.html">Restaurante</a><a class="is-on" href="pruebas.html">Pruebas</a></nav>
+  </header>
+
+  <main class="cam-page">
+    <h1>Probar color de pintura <span class="badge">experimental</span></h1>
+    <p class="cam-help">
+      Apuntá la cámara al auto (que entre <strong>entero</strong> en la imagen) y elegí un color.
+      Si no pinta la chapa correcta, <strong>tocá la chapa</strong> en la imagen para marcarla.
+      La imagen se procesa en tu celular: no se envía ni se guarda nada.
+    </p>
+
+    <!-- Escena: el video de la cámara queda debajo; encima, #lienzo muestra la imagen ya repintada. -->
+    <div id="cam" class="cam-stage pint-stage">
+      <video id="video" playsinline muted autoplay></video>
+      <canvas id="lienzo"></canvas>
+      <p id="estado" class="cam-status">Tocá “Activar cámara” o cargá una foto para empezar.</p>
+    </div>
+
+    <div class="cam-actions">
+      <button id="btnCam" class="cta cta-solid" type="button">📷 Activar cámara</button>
+      <label class="cta" for="archivo">🖼 Usar una foto</label>
+      <input id="archivo" type="file" accept="image/*" hidden />
+    </div>
+
+    <!-- Paleta: cada botón trae el color en data-color. ★ Reemplazar por la carta de colores del taller ★ -->
+    <fieldset class="colors pint-colores">
+      <legend>Color: <strong id="color-nombre">Rojo</strong> <small>· paleta de ejemplo</small></legend>
+      <div class="swatches" role="radiogroup" aria-label="Elegir color de pintura">
+        <button type="button" class="swatch is-active" role="radio" aria-checked="true" data-color="#c1272d" data-nombre="Rojo" style="--c:#c1272d" title="Rojo"></button>
+        <button type="button" class="swatch" role="radio" aria-checked="false" data-color="#2456c9" data-nombre="Azul" style="--c:#2456c9" title="Azul"></button>
+        <button type="button" class="swatch" role="radio" aria-checked="false" data-color="#2f9e57" data-nombre="Verde" style="--c:#2f9e57" title="Verde"></button>
+        <button type="button" class="swatch" role="radio" aria-checked="false" data-color="#f2b705" data-nombre="Amarillo" style="--c:#f2b705" title="Amarillo"></button>
+        <button type="button" class="swatch" role="radio" aria-checked="false" data-color="#e8641b" data-nombre="Naranja" style="--c:#e8641b" title="Naranja"></button>
+        <button type="button" class="swatch" role="radio" aria-checked="false" data-color="#f1f1ee" data-nombre="Blanco" style="--c:#f1f1ee" title="Blanco"></button>
+        <button type="button" class="swatch" role="radio" aria-checked="false" data-color="#9aa0a6" data-nombre="Gris plata" style="--c:#9aa0a6" title="Gris plata"></button>
+        <button type="button" class="swatch" role="radio" aria-checked="false" data-color="#1b1b1f" data-nombre="Negro" style="--c:#1b1b1f" title="Negro"></button>
+        <label class="swatch pint-libre" title="Otro color"><input id="libre" type="color" value="#7a1fa2" aria-label="Otro color" /></label>
+      </div>
+    </fieldset>
+
+    <div class="cam-actions">
+      <button id="btnOriginal" class="cta" type="button">👁 Mantener para ver el original</button>
+      <button id="btnGuardar" class="cta" type="button">💾 Guardar imagen</button>
+    </div>
+
+    <!-- Ajustes: sirven para afinar el resultado según el auto y la luz. -->
+    <fieldset class="cam-tune">
+      <legend>Ajustes</legend>
+      <label>Chapa a pintar
+        <span id="ref-chip" class="pint-chip" aria-hidden="true"></span>
+        <span id="ref-texto">automática</span>
+        <button id="btnAuto" class="anim-btn" type="button" hidden>Volver a automática</button>
+      </label>
+      <label>Tolerancia <input id="tol" type="range" min="15" max="120" step="1" value="50" /></label>
+      <label>Intensidad <input id="fuerza" type="range" min="0.2" max="1" step="0.05" value="0.9" /></label>
+    </fieldset>
+  </main>
+
+  <script type="module">
+    /* ==========================================================
+       CÓMO FUNCIONA (resumen)
+       ==========================================================
+       1. getUserMedia abre la cámara (o se carga una foto).
+       2. MediaPipe "Image Segmenter" (modelo DeepLab v3) marca qué píxeles
+          de la imagen son un vehículo → "máscara".
+       3. Dentro de la máscara se busca el color de la chapa (el más
+          repetido) o se usa el que el usuario tocó. Solo se repintan los
+          píxeles parecidos a ese color: así vidrios, gomas y faros quedan
+          como están.
+       4. Cada píxel de chapa se reemplaza por el color elegido, pero
+          conservando su luz y su sombra originales (brillos y reflejos),
+          para que parezca pintura y no una mancha plana.
+       Todo corre en el navegador; no hay servidor.
+       ========================================================== */
+
+    const $ = (s) => document.querySelector(s);
+    const wrap = $('#cam'), video = $('#video'), lienzo = $('#lienzo'), estado = $('#estado');
+    const ctx = lienzo.getContext('2d');
+    // Lienzo de trabajo (no se ve): acá se copia cada cuadro para leer sus píxeles.
+    const trabajo = document.createElement('canvas');
+    const ctxT = trabajo.getContext('2d', { willReadFrequently: true });
+
+    const LADO_MAX = 640;                 // se procesa a esta resolución (más = más lento)
+    const CLASES_VEHICULO = [6, 7];       // categorías de DeepLab (Pascal VOC): 6 = ómnibus, 7 = auto
+    const COBERTURA_MIN = 0.02;           // menos del 2 % de la imagen = "no hay auto"
+
+    let W = 0, H = 0;
+    let fuente = null;                    // ImageData del cuadro original
+    let salida = null;                    // ImageData repintado
+    let mascara = null;                   // Uint8Array: 1 = píxel de vehículo
+    let cruda = null;                     // la máscara tal como la da el detector, antes de limpiarla
+    const BORDE = 4;                      // píxeles que se recortan del contorno de la máscara
+    let hayAuto = false;
+    let modo = null;                      // 'camara' | 'foto'
+    let verOriginal = false;
+
+    /* ---------- Estado de la interfaz ---------- */
+    let destino = [193, 39, 45];          // color elegido (RGB)
+    let ref = null;                       // color de la chapa (RGB) que se va a reemplazar
+    let refFija = false;                  // true = la eligió el usuario tocando la imagen
+    const ui = {
+      tol: () => parseFloat($('#tol').value),
+      fuerza: () => parseFloat($('#fuerza').value),
+    };
+
+    const hexARgb = (hex) => { const n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+
+    function prepararLienzo(w, h) {
+      const k = Math.min(1, LADO_MAX / Math.max(w, h));
+      W = Math.round(w * k); H = Math.round(h * k);
+      lienzo.width = trabajo.width = W; lienzo.height = trabajo.height = H;
+      salida = ctx.createImageData(W, H);
+      mascara = new Uint8Array(W * H); cruda = new Uint8Array(W * H);
+      // El contenedor toma la proporción de la imagen para que no se deforme.
+      wrap.style.aspectRatio = `${W} / ${H}`;
+    }
+
+    /* ---------- Máscara del vehículo ----------
+       MediaPipe devuelve, por cada píxel, el número de categoría. La máscara
+       puede venir en otra resolución que el lienzo; por eso se remuestrea. */
+    function leerMascara(resultado) {
+      const m = resultado.categoryMask;
+      const datos = m.getAsUint8Array(), mw = m.width, mh = m.height;
+      for (let y = 0; y < H; y++) {
+        const fila = Math.min(mh - 1, (y * mh / H) | 0) * mw;
+        for (let x = 0; x < W; x++)
+          cruda[y * W + x] = CLASES_VEHICULO.includes(datos[fila + Math.min(mw - 1, (x * mw / W) | 0)]) ? 1 : 0;
+      }
+      // "Erosión": un píxel vale solo si sus vecinos a BORDE px también son vehículo.
+      // Saca las motas sueltas que el detector marca por error y el halo del contorno.
+      let cuenta = 0;
+      mascara.fill(0);
+      for (let y = BORDE; y < H - BORDE; y++)
+        for (let x = BORDE; x < W - BORDE; x++) {
+          const i = y * W + x;
+          const v = cruda[i] & cruda[i - BORDE] & cruda[i + BORDE] & cruda[i - BORDE * W] & cruda[i + BORDE * W];
+          mascara[i] = v; cuenta += v;
+        }
+      hayAuto = cuenta / (W * H) >= COBERTURA_MIN;
+    }
+
+    /* ---------- Color de la chapa (automático) ----------
+       Se agrupan los píxeles del vehículo en "cajones" de color parecido y se
+       toma el cajón más lleno: la chapa es la superficie más grande y pareja. */
+    const cajones = new Uint32Array(4096), sumas = new Float64Array(4096 * 3);
+    function colorDominante() {
+      cajones.fill(0); sumas.fill(0);
+      const d = fuente.data;
+      for (let i = 0, p = 0; i < mascara.length; i += 3, p += 12) {   // 1 de cada 3 píxeles alcanza
+        if (!mascara[i]) continue;
+        const c = (d[p] >> 4) << 8 | (d[p + 1] >> 4) << 4 | (d[p + 2] >> 4);
+        cajones[c]++; sumas[c * 3] += d[p]; sumas[c * 3 + 1] += d[p + 1]; sumas[c * 3 + 2] += d[p + 2];
+      }
+      let mejor = 0;
+      for (let c = 1; c < 4096; c++) if (cajones[c] > cajones[mejor]) mejor = c;
+      const n = cajones[mejor];
+      return n ? [sumas[mejor * 3] / n, sumas[mejor * 3 + 1] / n, sumas[mejor * 3 + 2] / n] : null;
+    }
+
+    function mostrarRef() {
+      $('#ref-chip').style.background = ref ? `rgb(${ref.map(Math.round)})` : 'transparent';
+      $('#ref-texto').textContent = refFija ? 'elegida por vos' : 'automática';
+      $('#btnAuto').hidden = !refFija;
+    }
+
+    /* ---------- Repintado ----------
+       Para comparar colores se separa cada píxel en luz (Y) y tono (Cb, Cr).
+       La chapa de un auto cambia mucho de luz (sombras, reflejos) pero poco de
+       tono; por eso el parecido se mide sobre todo por el tono. En autos
+       blancos, grises o negros no hay tono: ahí pesa más la luz. */
+    function repintar() {
+      const src = fuente.data, out = salida.data;
+      // Sin auto detectado solo se pinta si el usuario marcó la chapa (se pinta por color, sin máscara).
+      const pintarTodo = !hayAuto && refFija;
+      const activo = !verOriginal && ref && (hayAuto || pintarTodo);
+      if (!activo) { out.set(src); return; }
+
+      const [rr, rg, rb] = ref, [tr, tg, tb] = destino;
+      const ry = 0.299 * rr + 0.587 * rg + 0.114 * rb;
+      const rcb = (rb - ry) * 0.564, rcr = (rr - ry) * 0.713;
+      const croma = Math.hypot(rcb, rcr);
+      const pesoLuz = croma > 25 ? 0.25 : 0.25 + (25 - croma) / 25 * 0.6;
+      const t0 = ui.tol(), t1 = t0 * 1.6, fuerza = ui.fuerza();
+      const luzRef = Math.max(ry, 35);
+
+      for (let i = 0, p = 0; i < mascara.length; i++, p += 4) {
+        const r = src[p], g = src[p + 1], b = src[p + 2];
+        out[p + 3] = 255;
+        if (!pintarTodo && !mascara[i]) { out[p] = r; out[p + 1] = g; out[p + 2] = b; continue; }
+
+        const y = 0.299 * r + 0.587 * g + 0.114 * b;
+        const dcb = (b - y) * 0.564 - rcb, dcr = (r - y) * 0.713 - rcr;
+        const dist = Math.sqrt(dcb * dcb + dcr * dcr) + pesoLuz * Math.abs(y - ry);
+        let peso = dist <= t0 ? 1 : dist >= t1 ? 0 : (t1 - dist) / (t1 - t0);   // borde suave
+        peso *= fuerza;
+        if (peso <= 0) { out[p] = r; out[p + 1] = g; out[p + 2] = b; continue; }
+
+        // Luz del píxel respecto a la chapa "típica": <1 sombra, >1 brillo.
+        const k = y / luzRef;
+        let nr, ng, nb;
+        if (k <= 1) { nr = tr * k; ng = tg * k; nb = tb * k; }
+        else {                                                  // brillos: se aclaran hacia blanco
+          const a = Math.min(1, (k - 1) * 0.8);
+          nr = tr + (255 - tr) * a; ng = tg + (255 - tg) * a; nb = tb + (255 - tb) * a;
+        }
+        out[p] = r + (nr - r) * peso; out[p + 1] = g + (ng - g) * peso; out[p + 2] = b + (nb - b) * peso;
+      }
+    }
+
+    function dibujar() {
+      if (!fuente) return;
+      repintar();
+      ctx.putImageData(salida, 0, 0);
+      if (!hayAuto && !refFija) estado.textContent = 'No detecto un auto. Alejate para que entre entero, o tocá la chapa para marcarla.';
+      else if (!hayAuto) estado.textContent = 'Pintando por color (sin detección de auto).';
+      else estado.textContent = '';
+    }
+
+    /* ---------- Procesar un cuadro (de la cámara o de una foto) ---------- */
+    let segmentador = null, cuadros = 0;
+    function procesar(origen) {
+      ctxT.drawImage(origen, 0, 0, W, H);
+      fuente = ctxT.getImageData(0, 0, W, H);
+      segmentador.segmentForVideo(trabajo, performance.now(), leerMascara);
+      // La chapa automática se recalcula cada tanto y se mezcla con la anterior para que no parpadee.
+      if (!refFija && hayAuto && (modo === 'foto' || cuadros++ % 6 === 0)) {
+        const c = colorDominante();
+        if (c) { ref = ref && modo === 'camara' ? ref.map((v, i) => v + (c[i] - v) * 0.3) : c; mostrarRef(); }
+      }
+      dibujar();
+    }
+
+    async function iniciarMediaPipe() {
+      estado.textContent = 'Cargando detector de vehículos…';
+      const { ImageSegmenter, FilesetResolver } = await import(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs');
+      const fileset = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm');
+      const opciones = (delegate) => ({
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite',
+          delegate,                                       // GPU = más rápido; CPU = más compatible
+        },
+        runningMode: 'VIDEO', outputCategoryMask: true, outputConfidenceMasks: false,
+      });
+      try { segmentador = await ImageSegmenter.createFromOptions(fileset, opciones('GPU')); }
+      catch { segmentador = await ImageSegmenter.createFromOptions(fileset, opciones('CPU')); }
+    }
+
+    function apagarCamara() {
+      if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+      $('#btnCam').textContent = '📷 Activar cámara';
+    }
+
+    function soltarRef() { ref = null; refFija = false; mostrarRef(); }
+
+    async function activarCamara() {
+      try {
+        if (!segmentador) await iniciarMediaPipe();
+        estado.textContent = 'Abriendo cámara…';
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        video.srcObject = stream;
+        await video.play();
+        prepararLienzo(video.videoWidth, video.videoHeight);
+        soltarRef();
+        wrap.classList.add('activa');
+        modo = 'camara';
+        $('#btnCam').textContent = '📷 Cámara activa';
+      } catch (e) {
+        console.error(e);
+        estado.textContent = e.name === 'NotAllowedError'
+          ? 'Permiso de cámara denegado. Habilitalo en el navegador y probá de nuevo.'
+          : 'No se pudo iniciar: ' + (e.message || e.name);
+      }
+    }
+
+    /* Carga una imagen fija (foto del celular, o cualquier <img>/<canvas>). */
+    async function usarImagen(img) {
+      try {
+        if (!segmentador) await iniciarMediaPipe();
+        apagarCamara();
+        modo = 'foto';
+        prepararLienzo(img.naturalWidth || img.width, img.naturalHeight || img.height);
+        soltarRef();
+        wrap.classList.add('activa');
+        procesar(img);
+      } catch (e) {
+        console.error(e);
+        estado.textContent = 'No se pudo procesar la imagen: ' + (e.message || e.name);
+      }
+    }
+
+    let ultimoTiempo = -1;
+    function bucle() {
+      requestAnimationFrame(bucle);
+      if (modo !== 'camara' || video.readyState < 2) return;
+      if (video.currentTime === ultimoTiempo) return;     // no procesar el mismo cuadro dos veces
+      ultimoTiempo = video.currentTime;
+      procesar(video);
+    }
+
+    /* En modo foto la imagen no cambia sola: se redibuja cuando cambia un control. */
+    const refrescar = () => { if (modo === 'foto') dibujar(); };
+
+    /* ---------- Controles ---------- */
+    $('#btnCam').addEventListener('click', activarCamara);
+    $('#archivo').addEventListener('change', async (e) => {
+      const archivo = e.target.files[0];
+      if (!archivo) return;
+      const img = new Image();
+      img.src = URL.createObjectURL(archivo);
+      await img.decode();
+      await usarImagen(img);
+      URL.revokeObjectURL(img.src);
+      e.target.value = '';                                // permite volver a elegir la misma foto
+    });
+
+    const swatches = document.querySelectorAll('.swatch');
+    function elegirColor(boton, hex, nombre) {
+      destino = hexARgb(hex);
+      swatches.forEach(b => {
+        b.classList.toggle('is-active', b === boton);
+        if (b.hasAttribute('aria-checked')) b.setAttribute('aria-checked', String(b === boton));
+      });
+      $('#color-nombre').textContent = nombre;
+      refrescar();
+    }
+    document.querySelectorAll('.swatch[data-color]').forEach(b =>
+      b.addEventListener('click', () => elegirColor(b, b.dataset.color, b.dataset.nombre)));
+    $('#libre').addEventListener('input', (e) => {
+      const etiqueta = e.target.parentElement;
+      etiqueta.style.setProperty('--c', e.target.value);
+      elegirColor(etiqueta, e.target.value, 'Personalizado');
+    });
+
+    // Tocar la imagen = "esta es la chapa": se toma el color promedio alrededor del toque.
+    lienzo.addEventListener('click', (e) => {
+      if (!fuente) return;
+      const caja = lienzo.getBoundingClientRect();
+      const x = Math.round((e.clientX - caja.left) * W / caja.width);
+      const y = Math.round((e.clientY - caja.top) * H / caja.height);
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let j = Math.max(0, y - 3); j <= Math.min(H - 1, y + 3); j++)
+        for (let i = Math.max(0, x - 3); i <= Math.min(W - 1, x + 3); i++) {
+          const p = (j * W + i) * 4;
+          r += fuente.data[p]; g += fuente.data[p + 1]; b += fuente.data[p + 2]; n++;
+        }
+      ref = [r / n, g / n, b / n]; refFija = true;
+      mostrarRef(); refrescar();
+    });
+    $('#btnAuto').addEventListener('click', () => {
+      soltarRef();
+      if (modo === 'foto' && hayAuto) { ref = colorDominante(); mostrarRef(); }
+      refrescar();
+    });
+
+    $('#tol').addEventListener('input', refrescar);
+    $('#fuerza').addEventListener('input', refrescar);
+
+    const btnOriginal = $('#btnOriginal');
+    const original = (ver) => { verOriginal = ver; refrescar(); };
+    btnOriginal.addEventListener('pointerdown', () => original(true));
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btnOriginal.addEventListener(ev, () => original(false)));
+
+    $('#btnGuardar').addEventListener('click', () => {
+      if (!fuente) return;
+      lienzo.toBlob((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `pintura-${$('#color-nombre').textContent.toLowerCase().replace(/\s+/g, '-')}.jpg`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, 'image/jpeg', 0.92);
+    });
+
+    requestAnimationFrame(bucle);
+    window.__pintura = { usarImagen, estado: () => ({ W, H, hayAuto, ref, refFija, modo }) };  // para depurar desde la consola
+  </script>
+</body>
+</html>

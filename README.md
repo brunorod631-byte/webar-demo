@@ -23,6 +23,7 @@ Pensada para automotoras, pero genérica: cambiando el `.glb` y los textos sirve
 | `qr.html` | Generador de QR imprimible para el local | Demo funcional |
 | `xr.html` | Personaje interactivo en RA y VR con three.js + WebXR | Experimental |
 | `pie.html` | Zapatilla sobre el pie con la cámara (MediaPipe Pose + three.js) | Experimental |
+| `pintura.html` | Repintado en vivo: la cámara detecta un auto real y le cambia el color de la chapa (MediaPipe Image Segmenter) | Experimental |
 | `pruebas.html` | Laboratorio: zapatilla en RA de superficie | Experimental |
 
 ## Stack
@@ -45,6 +46,7 @@ index.html   demo Autos: ficha de vehículo + visor <model-viewer> (todo comenta
 pruebas.html laboratorio: zapatilla en RA de superficie
 xr.html      personaje animado interactivo en RA y VR con three.js + WebXR (experimental)
 pie.html     prototipo experimental: zapatilla sobre el pie con la cámara (MediaPipe + three.js)
+pintura.html prototipo experimental: repintar un auto real con la cámara (MediaPipe Image Segmenter + canvas)
 menu.html    demo Restaurante: ficha de plato (pizza), misma base sin selector de color
 style.css    estilos (variables de marca en :root)
 script.js    cambio de color, aviso de RA, barra de carga

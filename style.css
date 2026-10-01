@@ -186,6 +186,16 @@ h1 { margin: 4px 0 6px; font-size: 1.6rem; line-height: 1.2; }
 .cam-tune label { font-size: .9rem; display: flex; gap: 10px; align-items: center; }
 .cam-tune input[type=range] { flex: 1; }
 
+/* ---------- Página "Probar color de pintura" (cámara) ---------- */
+.pint-stage { aspect-ratio: 4 / 3; }
+.pint-stage canvas { cursor: crosshair; }
+.pint-colores { margin-top: 16px; }
+.pint-libre { display: inline-block; --c: #7a1fa2; background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); overflow: hidden; }
+.pint-libre.is-active { background: var(--c); }
+.pint-libre input { opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.pint-chip { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid #cfd4dc; flex: none; }
+label.cta { cursor: pointer; }
+
 /* ---------- Selector de vehículo y animaciones ---------- */
 .veh-tabs { display: flex; gap: 6px; margin: 8px 0 4px; }
 .veh { font: inherit; font-size: .85rem; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1.5px solid #cfd4dc; background: #fff; color: var(--muted); cursor: pointer; }
